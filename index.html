@@ -114,6 +114,15 @@ select.year{border:1px solid var(--line);background:var(--card);border-radius:10
 .leaflet-bar a:last-child{border-bottom:0}
 .leaflet-control-attribution{background:rgba(255,255,255,.75);color:#333;padding:0 5px;font-size:10px}
 .leaflet-control-attribution a{color:#333}
+.sug{display:flex;flex-direction:column;margin:-6px 0 8px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--card)}
+.sug:empty{display:none}
+.sug button{border:0;border-top:1px solid var(--line);background:none;text-align:left;padding:8px 10px;cursor:pointer;display:flex;flex-direction:column;gap:1px}
+.sug button:first-child{border-top:0}
+.sug button span{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sug button:active{background:var(--olive-soft)}
+.addrbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-2px 0 12px;font-size:12.5px}
+.lotto-pin{background:none;border:0}
+.lotto-pin div{transform:translate(-50%,-100%);display:inline-block;white-space:nowrap;background:#fff;color:#26291c;border-radius:10px;padding:3px 8px;font:700 12px/1.3 -apple-system,sans-serif;box-shadow:0 2px 6px rgba(0,0,0,.35)}
 .leaflet-tooltip{position:absolute;padding:1px 6px;background:rgba(20,22,15,.78);color:#fff;border-radius:6px;font:600 11px/1.4 -apple-system,sans-serif;white-space:nowrap;pointer-events:none;visibility:hidden}
 .labels .leaflet-tooltip{visibility:visible}
 /* sheet */
@@ -502,8 +511,12 @@ function initMap(con, colore){
       .on('click', ev => { L.DomEvent.stopPropagation(ev); if (!S.posiziona) detPianta(p.id); })
       .addTo(map);
   });
+  // Etichetta con il nome di ogni lotto che ha un indirizzo localizzato
+  const lotti = S.appezzamenti.filter(a=>a.lat!=null);
+  lotti.forEach(a => L.marker([a.lat,a.lng], { interactive:false, icon:L.divIcon({ className:'lotto-pin', html:`<div>📍 ${esc(a.nome)}</div>`, iconSize:[0,0] }) }).addTo(map));
   if (S._mapView) map.setView(S._mapView.c, S._mapView.z);
   else if (con.length) map.fitBounds(L.latLngBounds(con.map(p=>[p.lat,p.lng])).pad(0.15), { maxZoom:19 });
+  else if (lotti.length) map.setView([lotti[0].lat,lotti[0].lng], 18);
   else {
     map.setView([41.9,12.5], 6);
     navigator.geolocation?.getCurrentPosition(pos => map.setView([pos.coords.latitude,pos.coords.longitude], 18), ()=>{}, { timeout:8000 });
@@ -546,7 +559,8 @@ function detPianta(id){
     <div class="card">
       <div class="row"><div class="main">Stato</div><span class="badge ${STATO_CL[p.stato]}">${esc(p.stato)}</span></div>
       ${p.varieta?`<div class="row"><div class="main">Varietà</div><div class="n">${esc(p.varieta)}</div></div>`:''}
-      ${p.appezzamento_id?`<div class="row"><div class="main">Appezzamento</div><div class="n">${esc(appName(p.appezzamento_id))}</div></div>`:''}
+      ${p.appezzamento_id?(()=>{const a=S.appezzamenti.find(x=>x.id===p.appezzamento_id);const ind=indirizzoLotto(a),cat=catastoLotto(a),nav=navigaLotto(a||{});
+        return `<div class="row"><div class="main">Appezzamento${ind||cat?`<div class="s" style="white-space:normal">${esc([ind,cat].filter(Boolean).join(' · '))}</div>`:''}</div><div class="n">${esc(appName(p.appezzamento_id))}${nav?` <a href="${nav}" target="_blank" rel="noopener">↗</a>`:''}</div></div>`})():''}
       ${p.anno_impianto?`<div class="row"><div class="main">Impianto</div><div class="n">${p.anno_impianto} (${new Date().getFullYear()-p.anno_impianto} anni)</div></div>`:''}
       ${p.lat?`<div class="row"><div class="main">Posizione</div><a class="n" href="https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lng}#map=19/${p.lat}/${p.lng}" target="_blank" rel="noopener">mappa ↗</a></div>`:''}
       ${p.note?`<div class="row"><div class="main s" style="white-space:normal">${esc(p.note)}</div></div>`:''}
@@ -660,6 +674,7 @@ function closeSheet(){ $('#sheet').classList.remove('open'); }
 $('#sheet').addEventListener('click', e=>{ if(e.target.id==='sheet') closeSheet(); });
 
 function fieldHtml(f){
+  if (f.type==='hidden') return `<input type="hidden" name="${f.name}" value="${esc(f.value ?? '')}">`;
   const v = f.value ?? '';
   const req = f.required ? 'required' : '';
   let input;
@@ -694,7 +709,7 @@ function openForm({title, fields, onSubmit, onDelete, extra=''}){
     for (const f of fields){
       if (f.type==='piante') { vals[f.name] = fd.getAll('piante'); continue; }
       let v = fd.get(f.name); v = (v===null||v==='') ? null : v;
-      if (v!==null && f.type==='number') v = Number(String(v).replace(',','.'));
+      if (v!==null && (f.type==='number'||f.num)) v = Number(String(v).replace(',','.'));
       vals[f.name] = v;
     }
     const btn = frm.querySelector('[type=submit]'); btn.disabled = true; btn.textContent='Salvo…';
@@ -720,9 +735,69 @@ function formAppezzamento(id){
   const a = S.appezzamenti.find(x=>x.id===id) || {};
   openForm({ title: id?'Modifica appezzamento':'Nuovo appezzamento', fields:[
     {name:'nome',label:'Nome',required:true,value:a.nome,ph:'es. Uliveto basso'},
+    {name:'indirizzo',label:'Via / località',value:a.indirizzo,ph:'es. Contrada Colle Ulivo 12'},
+    {name:'comune',label:'Comune',value:a.comune,half:true},
+    {name:'provincia',label:'Provincia',value:a.provincia,ph:'es. CB',half:true},
+    {name:'foglio',label:'Foglio catastale',value:a.foglio,half:true},
+    {name:'particella',label:'Particella',value:a.particella,half:true,hint:'Dalla visura catastale: utili per identificare il lotto in modo univoco.'},
     {name:'superficie_mq',label:'Superficie (m²)',type:'number',value:a.superficie_mq},
-    {name:'note',label:'Note',type:'textarea',value:a.note}],
-    onSubmit: v=>save('appezzamenti',v,id), onDelete: id&&(()=>remove('appezzamenti',id)) });
+    {name:'note',label:'Note',type:'textarea',value:a.note},
+    {name:'cap',type:'hidden',value:a.cap},
+    {name:'lat',type:'hidden',num:true,value:a.lat},
+    {name:'lng',type:'hidden',num:true,value:a.lng}],
+    onSubmit: v=>{ if (v.provincia) v.provincia = v.provincia.toUpperCase(); return save('appezzamenti',v,id); },
+    onDelete: id&&(()=>remove('appezzamenti',id)) });
+  // Suggerimenti di indirizzo (OpenStreetMap) e posizione del lotto
+  const ind = $('#frm [name=indirizzo]');
+  ind.closest('label').insertAdjacentHTML('afterend', `<div id="addrSug" class="sug"></div>
+    <div class="addrbar"><span id="addrStato" class="muted">${a.lat!=null?'📍 Posizione del lotto salvata':'Scrivi la via: ti suggerisco gli indirizzi'}</span>
+    <button type="button" class="btn sm sec" onclick="lottoQui()">📍 Sono sul terreno</button></div>`);
+  let t; ind.addEventListener('input', () => { clearTimeout(t); t = setTimeout(cercaIndirizzo, 500); });
+}
+const NOMINATIM = 'https://nominatim.openstreetmap.org';
+function provDa(ad){ const iso = ad['ISO3166-2-lvl6'] || ''; return iso.startsWith('IT-') ? iso.slice(3) : ''; }
+function comuneDa(ad){ return ad.city || ad.town || ad.village || ad.municipality || ad.hamlet || ''; }
+function viaDa(ad){ return [ad.road || ad.locality || ad.isolated_dwelling || ad.hamlet || '', ad.house_number || ''].filter(Boolean).join(' '); }
+function setLotto(r){
+  const ad = r.address || {}, f = $('#frm'); if (!f) return;
+  const via = viaDa(ad); if (via) f.indirizzo.value = via;
+  if (comuneDa(ad)) f.comune.value = comuneDa(ad);
+  if (provDa(ad)) f.provincia.value = provDa(ad);
+  f.cap.value = ad.postcode || '';
+  f.lat.value = (+r.lat).toFixed(7); f.lng.value = (+r.lon).toFixed(7);
+  $('#addrSug').innerHTML = '';
+  $('#addrStato').innerHTML = `📍 Posizione trovata · <a href="https://www.openstreetmap.org/?mlat=${f.lat.value}&mlon=${f.lng.value}#map=17/${f.lat.value}/${f.lng.value}" target="_blank" rel="noopener">verifica ↗</a>`;
+}
+async function cercaIndirizzo(){
+  const f = $('#frm'); if (!f) return;
+  const q = [f.indirizzo.value.trim(), f.comune.value.trim(), f.provincia.value.trim()].filter(Boolean).join(', ');
+  const box = $('#addrSug');
+  if (f.indirizzo.value.trim().length < 4) { box.innerHTML = ''; return; }
+  try {
+    const res = await fetch(`${NOMINATIM}/search?format=jsonv2&addressdetails=1&countrycodes=it&limit=5&accept-language=it&q=${encodeURIComponent(q)}`);
+    const rs = await res.json();
+    window._sug = rs;
+    box.innerHTML = rs.length ? rs.map((r,i)=>`<button type="button" onclick="setLotto(window._sug[${i}])"><b>${esc(viaDa(r.address||{})||r.name||'')}</b><span>${esc(r.display_name)}</span></button>`).join('')
+      : '<div class="muted" style="padding:8px 10px">Nessun indirizzo trovato. Puoi salvarlo comunque, oppure usa "Sono sul terreno".</div>';
+  } catch(e) { box.innerHTML = '<div class="muted" style="padding:8px 10px">Ricerca indirizzi non disponibile al momento.</div>'; }
+}
+function lottoQui(){
+  if (!navigator.geolocation) return toast('Geolocalizzazione non disponibile');
+  toast('Rilevo la posizione…');
+  navigator.geolocation.getCurrentPosition(async pos => {
+    const r = { lat:pos.coords.latitude, lon:pos.coords.longitude, address:{} };
+    try { const res = await fetch(`${NOMINATIM}/reverse?format=jsonv2&addressdetails=1&accept-language=it&lat=${r.lat}&lon=${r.lon}`); const j = await res.json(); r.address = j.address || {}; } catch(e){}
+    setLotto(r); toast('Posizione del lotto impostata');
+  }, e => toast('Posizione non disponibile: '+e.message), { enableHighAccuracy:true, timeout:15000 });
+}
+function indirizzoLotto(a){
+  if (!a) return '';
+  return [a.indirizzo, [a.cap, a.comune].filter(Boolean).join(' ') + (a.provincia ? ` (${a.provincia})` : '')].filter(x=>x && x.trim()).join(', ');
+}
+function catastoLotto(a){ return a && (a.foglio || a.particella) ? `Fg. ${a.foglio||'—'} · Part. ${a.particella||'—'}` : ''; }
+function navigaLotto(a){
+  const dest = a.lat!=null ? `${a.lat},${a.lng}` : indirizzoLotto(a);
+  return dest ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}` : '';
 }
 
 function formPianta(id){
@@ -834,7 +909,9 @@ function openSettings(){
   openSheet(`<h3>Impostazioni</h3>
     <div class="card"><h2>Appezzamenti<span class="sp"></span><button class="btn sm sec" onclick="formAppezzamento()">+ Nuovo</button></h2>
       ${S.appezzamenti.map(a=>`<div class="row tap" onclick="formAppezzamento('${a.id}')"><div class="main"><div class="t">${esc(a.nome)}</div>
-        <div class="s">${S.piante.filter(p=>p.appezzamento_id===a.id).length} piante${a.superficie_mq?' · '+num(a.superficie_mq,0)+' m²':''}</div></div><div class="muted">›</div></div>`).join('')||'<div class="empty">Nessun appezzamento.</div>'}</div>
+        <div class="s">${S.piante.filter(p=>p.appezzamento_id===a.id).length} piante${a.superficie_mq?' · '+num(a.superficie_mq,0)+' m²':''}${catastoLotto(a)?' · '+esc(catastoLotto(a)):''}</div>
+        ${indirizzoLotto(a)?`<div class="s" style="white-space:normal">📍 ${esc(indirizzoLotto(a))}</div>`:''}</div>
+        ${navigaLotto(a)?`<a class="btn sm sec" href="${navigaLotto(a)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Vai ↗</a>`:'<div class="muted">›</div>'}</div>`).join('')||'<div class="empty">Nessun appezzamento.</div>'}</div>
     <div class="card"><h2>Dati</h2>
       <div class="row tap" onclick="formEtichette()"><div class="main"><div class="t">Stampa etichette QR</div><div class="s">Un QR per ogni pianta, da appendere al tronco</div></div><div class="muted">🏷️</div></div>
       <div class="row tap" onclick="esporta()"><div class="main"><div class="t">Esporta tutti i dati (JSON)</div><div class="s">Backup completo</div></div><div class="muted">↓</div></div>

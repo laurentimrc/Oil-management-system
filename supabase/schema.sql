@@ -7,6 +7,14 @@ create table public.appezzamenti (
   nome text not null,
   superficie_mq numeric,
   note text,
+  indirizzo text,
+  comune text,
+  provincia text,
+  cap text,
+  foglio text,       -- foglio catastale
+  particella text,   -- particella catastale
+  lat double precision,
+  lng double precision,
   created_at timestamptz not null default now()
 );
 
