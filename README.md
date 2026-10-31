@@ -12,6 +12,7 @@ Web app per gestire l'intero ciclo di un uliveto, **pianta per pianta**: lavori 
 - **Lavori**: potatura, concimazione, trattamenti, irrigazione, lavorazioni, sfalcio, con prodotto, dose, giorni di carenza, ore e costi; assegnabili a tutto l'uliveto, a un appezzamento o a singole piante.
 - **Raccolta e frantoio**: kg di olive per pianta o appezzamento, moliture con litri/kg di olio e calcolo automatico della resa.
 - **Conti**: spese ed entrate per categoria, saldo dell'annata; i costi di lavori e moliture sono inclusi in automatico.
+- **QR code**: ogni pianta ha un QR univoco che apre direttamente la sua scheda; stampa delle etichette in fogli A4 da 12 (tutte o per appezzamento).
 - **Account e backup**: registrazione con email, recupero password, esportazione completa dei dati in JSON.
 
 ## Architettura

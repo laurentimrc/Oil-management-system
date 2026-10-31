@@ -13,6 +13,7 @@
 <title>Il mio Uliveto</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <style>
 :root{
   --bg:#f6f4ec; --card:#ffffff; --ink:#26291c; --muted:#6f735f; --line:#e3e0d2;
@@ -132,6 +133,20 @@ label.f textarea{min-height:70px;resize:vertical}
 .plist label:first-child{border-top:0}
 .actions{display:flex;gap:10px;margin-top:14px}
 .actions .btn{flex:1}
+.qrbox{background:#fff;border-radius:12px;padding:10px;width:190px;margin:0 auto 8px;border:1px solid var(--line)}
+.qrbox svg{width:100%;height:auto;display:block}
+#print{display:none}
+@media print{
+  @page{size:A4;margin:10mm}
+  html,body{background:#fff!important}
+  body>*:not(#print){display:none!important}
+  #print{display:block;color:#000}
+  .labels{display:grid;grid-template-columns:repeat(3,1fr);gap:4mm}
+  .lab{border:1px dashed #888;border-radius:3mm;padding:4mm 3mm;text-align:center;break-inside:avoid;height:64mm;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5mm}
+  .lab svg{width:40mm;height:40mm;display:block}
+  .lab b{font:700 17pt/1.1 -apple-system,Arial,sans-serif}
+  .lab small{font:8pt/1.2 -apple-system,Arial,sans-serif;color:#333}
+}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;display:none;max-width:90vw}
 /* auth */
 .auth{max-width:380px;margin:12vh auto 0;padding:0 20px}
@@ -222,7 +237,7 @@ async function remove(table, id){
   const { error } = await sb.from(table).delete().eq('id', id);
   if (error) throw error; return true;
 }
-async function refresh(){ try{ await loadAll(); render(); }catch(e){ fail(e); } }
+async function refresh(){ try{ await loadAll(); render(); apriDaLink(); }catch(e){ fail(e); } }
 
 /* ===== Calcoli annata ===== */
 function annata(y){
@@ -334,7 +349,7 @@ function viewPiante(){
     <input class="search" placeholder="Cerca per codice, varietà, note…" value="${esc(S.q)}" oninput="S.q=this.value;viewPiante();const s=document.querySelector('.search');s.focus();s.setSelectionRange(s.value.length,s.value.length)">
     ${S.appezzamenti.length?`<div class="chips"><button class="chip ${S.filtroApp==='tutti'?'on':''}" onclick="S.filtroApp='tutti';viewPiante()">Tutti</button>
       ${S.appezzamenti.map(a=>`<button class="chip ${S.filtroApp===a.id?'on':''}" onclick="S.filtroApp='${a.id}';viewPiante()">${esc(a.nome)}</button>`).join('')}</div>`:''}
-    <div class="card"><h2>${list.length} piante<span class="sp"></span><button class="btn sm sec" onclick="formBlocco()">+ In blocco</button></h2>
+    <div class="card"><h2>${list.length} piante<span class="sp"></span><button class="btn sm sec" onclick="formEtichette()">🏷️ QR</button><button class="btn sm sec" onclick="formBlocco()">+ In blocco</button></h2>
       ${list.map(p=>`<div class="row tap" onclick="detPianta('${p.id}')"><div class="main"><div class="t">${esc(p.codice)} ${p.stato!=='sana'?`<span class="badge ${STATO_CL[p.stato]}">${esc(p.stato)}</span>`:''}</div>
         <div class="s">${[p.varieta,appName(p.appezzamento_id),p.anno_impianto?'impianto '+p.anno_impianto:null].filter(Boolean).map(esc).join(' · ')||'—'}</div></div>
         <div class="n">${kgY[p.id]?num(kgY[p.id])+' kg':''}</div></div>`).join('') || `<div class="empty">Nessuna pianta. Usa + per aggiungerne.</div>`}</div>`;
@@ -445,8 +460,47 @@ function detPianta(id){
       <button class="btn sec" onclick="formRaccolta(null,'${id}')">+ Raccolta</button>
       <button class="btn sec" onclick="formIntervento(null,['${id}'])">+ Lavoro</button>
     </div>
-    <div class="actions"><button class="btn block" onclick="formPianta('${id}')">Modifica pianta</button></div>`);
+    <div class="actions"><button class="btn block" onclick="formPianta('${id}')">Modifica pianta</button></div>
+    <div class="card" style="margin-top:14px"><h2>🏷️ QR code della pianta</h2>
+      <div class="qrbox">${qrSvg(qrUrl(p))}</div>
+      <div class="muted" style="text-align:center">Inquadralo con la fotocamera del telefono: si apre direttamente questa scheda.<br>ID univoco: <code>${esc(p.id)}</code></div>
+      <div class="actions"><button class="btn sec" onclick="stampaEtichette(['${id}'])">🖨️ Stampa etichetta</button></div></div>`);
 }
+
+/* ===== QR code ed etichette ===== */
+const QR_BASE = 'https://laurentimrc.github.io/Oil-management-system/';
+const qrUrl = p => QR_BASE + '#p=' + p.id;
+function qrSvg(text){
+  if (!window.qrcode) return '<div class="empty">QR non disponibile</div>';
+  const q = qrcode(0, 'M'); q.addData(text); q.make();
+  return q.createSvgTag({ cellSize:4, margin:2, scalable:true });
+}
+function formEtichette(){
+  if (!S.piante.length) return toast('Aggiungi prima le piante');
+  openSheet(`<h3>🏷️ Etichette QR</h3><div class="card">
+    <label class="f"><span>Piante da stampare</span><select id="etSel">
+      <option value="">Tutte (${S.piante.length})</option>
+      ${S.appezzamenti.map(a=>`<option value="${a.id}">${esc(a.nome)} (${S.piante.filter(p=>p.appezzamento_id===a.id).length})</option>`).join('')}
+    </select></label>
+    <div class="muted">Fogli A4 da 12 etichette (3×4), ognuna con QR, codice, varietà e appezzamento. Per l'esterno usa carta adesiva impermeabile o plastifica le etichette e fissale al tronco con una fascetta.</div>
+    <div class="actions"><button class="btn" onclick="const v=document.getElementById('etSel').value;stampaEtichette(S.piante.filter(p=>!v||p.appezzamento_id===v).map(p=>p.id))">🖨️ Stampa / salva PDF</button></div></div>`);
+}
+function stampaEtichette(ids){
+  const ps = ids.map(pianta).filter(Boolean);
+  if (!ps.length) return toast('Nessuna pianta da stampare');
+  let el = $('#print'); if (!el){ el = document.createElement('div'); el.id = 'print'; document.body.appendChild(el); }
+  el.innerHTML = `<div class="labels">${ps.map(p=>`<div class="lab">${qrSvg(qrUrl(p))}<b>${esc(p.codice)}</b><small>${esc([p.varieta, appName(p.appezzamento_id)].filter(Boolean).join(' · '))}</small></div>`).join('')}</div>`;
+  setTimeout(()=>window.print(), 150);
+}
+function apriDaLink(){
+  const m = location.hash.match(/^#p=([0-9a-f-]{36})$/i);
+  if (!m || !S.user) return;
+  history.replaceState(null, '', location.pathname + location.search);
+  const p = pianta(m[1]);
+  if (p) { S.tab = 'piante'; render(); detPianta(p.id); }
+  else toast('Questa pianta non appartiene al tuo account');
+}
+window.addEventListener('hashchange', apriDaLink);
 
 function viewLavori(){
   const list = S.interventi.filter(i=>inYear(i.data) && (S.filtroTipo==='tutti'||i.tipo===S.filtroTipo));
@@ -684,6 +738,7 @@ function openSettings(){
       ${S.appezzamenti.map(a=>`<div class="row tap" onclick="formAppezzamento('${a.id}')"><div class="main"><div class="t">${esc(a.nome)}</div>
         <div class="s">${S.piante.filter(p=>p.appezzamento_id===a.id).length} piante${a.superficie_mq?' · '+num(a.superficie_mq,0)+' m²':''}</div></div><div class="muted">›</div></div>`).join('')||'<div class="empty">Nessun appezzamento.</div>'}</div>
     <div class="card"><h2>Dati</h2>
+      <div class="row tap" onclick="formEtichette()"><div class="main"><div class="t">Stampa etichette QR</div><div class="s">Un QR per ogni pianta, da appendere al tronco</div></div><div class="muted">🏷️</div></div>
       <div class="row tap" onclick="esporta()"><div class="main"><div class="t">Esporta tutti i dati (JSON)</div><div class="s">Backup completo</div></div><div class="muted">↓</div></div>
       <div class="row"><div class="main"><div class="t">Account</div><div class="s">${esc(S.user.email)}</div></div><button class="btn sm danger" onclick="logout()">Esci</button></div></div>`);
 }
