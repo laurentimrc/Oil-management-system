@@ -148,6 +148,47 @@ label.f textarea{min-height:70px;resize:vertical}
   .lab small{font:8pt/1.2 -apple-system,Arial,sans-serif;color:#333}
 }
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;display:none;max-width:90vw}
+/* splash di caricamento */
+.splash{position:fixed;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:var(--bg);transition:opacity .45s ease, visibility .45s}
+.splash.out{opacity:0;visibility:hidden}
+.splash svg{width:132px;height:132px;overflow:visible}
+.splash .branch{fill:none;stroke:var(--olive);stroke-width:7;stroke-linecap:round;stroke-dasharray:260;stroke-dashoffset:260;animation:sp-draw 1s ease-out .1s forwards}
+.splash .leaf{transform-box:fill-box;transform-origin:center;transform:scale(0);animation:sp-grow .55s cubic-bezier(.3,1.6,.5,1) forwards}
+.splash .leaf.l1{animation-delay:.45s}.splash .leaf.l2{animation-delay:.65s}.splash .leaf.l3{animation-delay:.85s}.splash .leaf.l4{animation-delay:1.05s}
+.splash .olive{transform-box:view-box;transform-origin:118px 96px;opacity:0;animation:sp-drop .7s cubic-bezier(.3,1.4,.5,1) 1.15s forwards, sp-sway 2.2s ease-in-out 1.9s infinite}
+.splash .olive2{animation-delay:1.35s, 2.1s}
+.splash .name{font-size:22px;font-weight:700;letter-spacing:-.3px;color:var(--ink);opacity:0;animation:sp-fade .5s ease .9s forwards}
+.splash .name span{color:var(--olive)}
+.splash .msg{font-size:13.5px;color:var(--muted);height:18px;transition:opacity .25s}
+.splash .bar{width:150px;height:4px;border-radius:4px;background:var(--olive-soft);overflow:hidden;position:relative}
+.splash .bar i{position:absolute;inset:0;width:40%;border-radius:4px;background:linear-gradient(90deg,var(--olive-2),var(--gold));animation:sp-bar 1.1s ease-in-out infinite}
+.splash .retry{display:none}
+.splash.error .bar{display:none}.splash.error .retry{display:block}
+@keyframes sp-draw{to{stroke-dashoffset:0}}
+@keyframes sp-grow{to{transform:scale(1)}}
+@keyframes sp-drop{0%{opacity:0;transform:translateY(-22px)}60%{opacity:1;transform:translateY(4px)}100%{opacity:1;transform:translateY(0)}}
+@keyframes sp-sway{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+@keyframes sp-fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes sp-bar{0%{transform:translateX(-110%)}100%{transform:translateX(260%)}}
+/* ingresso delle schermate */
+main.enter>*,main.enter #view>*{animation:rise .42s cubic-bezier(.2,.8,.3,1) both}
+main.enter #view>*:nth-child(2){animation-delay:.05s}main.enter #view>*:nth-child(3){animation-delay:.1s}
+main.enter #view>*:nth-child(4){animation-delay:.15s}main.enter #view>*:nth-child(5){animation-delay:.2s}
+main.enter #view>*:nth-child(6){animation-delay:.25s}main.enter #view>*:nth-child(n+7){animation-delay:.3s}
+.kpis .kpi{transition:transform .15s}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+#sheet.open .panel{animation:sheet-up .3s cubic-bezier(.2,.8,.3,1)}
+@keyframes sheet-up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+.btn,.chip,.iconbtn,.fab,nav.tabs button,.row.tap{transition:transform .12s ease, background-color .2s}
+.btn:active,.chip:active,.iconbtn:active,.fab:active,.kpi:active{transform:scale(.96)}
+nav.tabs button:active .ic{transform:scale(.85)}
+nav.tabs button .ic{transition:transform .15s}
+nav.tabs button.on .ic{animation:tab-pop .35s cubic-bezier(.3,1.6,.5,1)}
+@keyframes tab-pop{0%{transform:scale(.7)}100%{transform:scale(1)}}
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;animation-delay:0s!important;transition-duration:.01ms!important}
+  .splash .branch{stroke-dashoffset:0}.splash .leaf{transform:none}.splash .olive,.splash .name{opacity:1}
+}
 /* auth */
 .auth{max-width:380px;margin:12vh auto 0;padding:0 20px}
 .auth .logo{font-size:44px;text-align:center}
@@ -157,6 +198,21 @@ label.f textarea{min-height:70px;resize:vertical}
 </style>
 </head>
 <body>
+<div id="splash" class="splash" role="status" aria-live="polite">
+  <svg viewBox="0 0 200 200" aria-hidden="true">
+    <path class="branch" d="M40 170 C 70 140, 100 110, 165 45"/>
+    <g class="leaf l1"><ellipse cx="78" cy="118" rx="11" ry="30" transform="rotate(-50 78 118)" fill="var(--olive-2)"/></g>
+    <g class="leaf l2"><ellipse cx="112" cy="70" rx="10" ry="28" transform="rotate(-15 112 70)" fill="var(--olive-2)"/></g>
+    <g class="leaf l3"><ellipse cx="150" cy="96" rx="10" ry="27" transform="rotate(60 150 96)" fill="#a4b56a"/></g>
+    <g class="leaf l4"><ellipse cx="168" cy="42" rx="8" ry="20" transform="rotate(40 168 42)" fill="#c6d38f"/></g>
+    <g class="olive"><line x1="118" y1="96" x2="118" y2="110" stroke="var(--olive)" stroke-width="3"/><ellipse cx="118" cy="124" rx="12" ry="16" fill="#2b3317"/><ellipse cx="114" cy="119" rx="3" ry="5" fill="#fff" opacity=".35"/></g>
+    <g class="olive olive2" style="transform-origin:96px 128px"><line x1="96" y1="128" x2="96" y2="138" stroke="var(--olive)" stroke-width="3"/><ellipse cx="96" cy="151" rx="11" ry="14" fill="var(--gold)"/></g>
+  </svg>
+  <div class="name">🫒 Il mio <span>Uliveto</span></div>
+  <div class="msg" id="splashMsg">Risveglio gli ulivi…</div>
+  <div class="bar"><i></i></div>
+  <button class="btn sm retry" onclick="location.reload()">Riprova</button>
+</div>
 <div id="app"></div>
 <div id="sheet"><div class="panel"><div class="grab"></div><div id="sheetBody"></div></div></div>
 <div id="toast"></div>
@@ -165,6 +221,25 @@ label.f textarea{min-height:70px;resize:vertical}
 /* ===== Configurazione Supabase (chiave pubblica: i dati sono protetti dalle policy RLS) ===== */
 const SUPABASE_URL = 'https://dhtlqdlhglsbguxokpxx.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_TutxUCRCvuECdvFhChNi1g_n7y8xB6G';
+/* ===== Splash di caricamento ===== */
+const SPLASH_MSG = ['Risveglio gli ulivi…','Conto le piante…','Pesando le olive…','Accendo il frantoio…','Quasi pronto…'];
+const SPLASH_T0 = Date.now();
+let splashTimer = null, splashI = 0;
+function splashMsg(t){ const m = document.getElementById('splashMsg'); if (!m) return; m.style.opacity = 0; setTimeout(()=>{ m.textContent = t; m.style.opacity = 1; }, 200); }
+function showSplash(){
+  const s = document.getElementById('splash'); if (!s) return;
+  s.classList.remove('out','error'); clearInterval(splashTimer); splashI = 0;
+  splashTimer = setInterval(()=>splashMsg(SPLASH_MSG[++splashI % SPLASH_MSG.length]), 1100);
+}
+function hideSplash(){
+  const s = document.getElementById('splash'); if (!s || s.classList.contains('out')) return;
+  const wait = Math.max(0, 1900 - (Date.now() - SPLASH_T0)); // lascia finire l'animazione al primo avvio
+  setTimeout(()=>{ s.classList.add('out'); clearInterval(splashTimer); }, wait);
+}
+function splashError(t){ const s = document.getElementById('splash'); clearInterval(splashTimer); s.classList.remove('out'); s.classList.add('error'); splashMsg(t); }
+showSplash();
+if (!window.supabase) { splashError('Impossibile caricare l\'app: controlla la connessione.'); throw new Error('supabase-js non caricato'); }
+
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 /* ===== Costanti ===== */
@@ -237,7 +312,7 @@ async function remove(table, id){
   const { error } = await sb.from(table).delete().eq('id', id);
   if (error) throw error; return true;
 }
-async function refresh(){ try{ await loadAll(); render(); apriDaLink(); }catch(e){ fail(e); } }
+async function refresh(){ try{ await loadAll(); S._caricato = true; render(); apriDaLink(); }catch(e){ fail(e); } }
 
 /* ===== Calcoli annata ===== */
 function annata(y){
@@ -278,7 +353,9 @@ function targetLabel(i){
 
 /* ===== Render ===== */
 function render(){
+  hideSplash();
   if (!S.user) return renderAuth();
+  const nuovaVista = S._lastTab !== S.tab; S._lastTab = S.tab;
   const ys = anni(); if (!ys.includes(S.year)) S.year = ys[0];
   $('#app').innerHTML = `
     <header>
@@ -293,6 +370,27 @@ function render(){
         .map(([k,ic,l])=>`<button class="${S.tab===k?'on':''}" onclick="S.tab='${k}';render();scrollTo(0,0)"><span class="ic">${ic}</span>${l}</button>`).join('')}
     </nav>`;
   ({home:viewHome,piante:viewPiante,lavori:viewLavori,raccolta:viewRaccolta,conti:viewConti})[S.tab]();
+  if (nuovaVista) {
+    const m = $('main'); m.classList.add('enter'); setTimeout(()=>m.classList.remove('enter'), 900);
+    contaNumeri();
+  }
+}
+/* I numeri dei riquadri salgono da zero al valore finale */
+function contaNumeri(){
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  document.querySelectorAll('#view .kpi .v').forEach(el => {
+    const txt = el.textContent, m = txt.match(/\d[\d.]*(,\d+)?/);
+    if (!m) return;
+    const dec = m[1] ? m[1].length - 1 : 0, fine = parseFloat(m[0].replace(/\./g,'').replace(',','.'));
+    if (!fine) return;
+    const t0 = performance.now(), dur = 750;
+    const step = now => {
+      const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = txt.replace(m[0], (fine * e).toLocaleString('it-IT', { minimumFractionDigits:dec, maximumFractionDigits:dec }));
+      if (k < 1) requestAnimationFrame(step); else el.textContent = txt;
+    };
+    requestAnimationFrame(step);
+  });
 }
 
 function viewHome(){
@@ -793,7 +891,7 @@ sb.auth.onAuthStateChange(async (_e, session) => {
   const u = session?.user || null;
   if (S._init && u?.id === S.user?.id) return;
   S._init = true; S.user = u;
-  if (u) { $('#app').innerHTML = '<div class="empty" style="margin-top:30vh">Caricamento…</div>'; await refresh(); }
+  if (u) { showSplash(); S._lastTab = null; await refresh(); if (!S._caricato) splashError('Non riesco a caricare i dati. Controlla la connessione.'); }
   else render();
 });
 </script>
