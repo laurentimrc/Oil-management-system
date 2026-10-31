@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#4d5a2c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Uliveto">
+<meta name="description" content="Gestisci il tuo uliveto pianta per pianta: lavori, trattamenti, raccolta, frantoio e conti.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>Il mio Uliveto</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+:root{
+  --bg:#f6f4ec; --card:#ffffff; --ink:#26291c; --muted:#6f735f; --line:#e3e0d2;
+  --olive:#4d5a2c; --olive-2:#76863f; --olive-soft:#e8ecd6; --gold:#c9a227; --gold-soft:#f6eccb;
+  --red:#a8432f; --red-soft:#f6e1db; --blue:#3f6b7a;
+  --r:14px; --shadow:0 1px 2px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme: dark){
+  :root{--bg:#161812; --card:#20231a; --ink:#ecebe2; --muted:#a3a690; --line:#33372a;
+    --olive:#a4b56a; --olive-2:#8c9c52; --olive-soft:#2b3220; --gold:#ddb94a; --gold-soft:#3a3420;
+    --red:#e08a73; --red-soft:#3d2620; --blue:#8bb6c4; --shadow:none;}
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(10px + env(safe-area-inset-top)) 16px 8px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+header h1{font-size:19px;margin:0;flex:1;letter-spacing:-.2px}
+header h1 span{color:var(--olive)}
+main{padding:14px 16px calc(90px + env(safe-area-inset-bottom));max-width:720px;margin:0 auto}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:6;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs button{flex:1;border:0;background:none;padding:9px 2px 8px;font-size:11px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
+nav.tabs button .ic{font-size:20px;line-height:1}
+nav.tabs button.on{color:var(--olive);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.card h2 .sp{flex:1}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px;box-shadow:var(--shadow)}
+.kpi .v{font-size:22px;font-weight:700;letter-spacing:-.4px}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi .d{font-size:11px;color:var(--muted);margin-top:2px}
+.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+.row .main{flex:1;min-width:0}
+.row .t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .s{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .n{font-weight:600;white-space:nowrap}
+.tap{cursor:pointer}
+.badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;background:var(--olive-soft);color:var(--olive);font-weight:600;white-space:nowrap}
+.badge.gold{background:var(--gold-soft);color:var(--gold)}
+.badge.red{background:var(--red-soft);color:var(--red)}
+.badge.grey{background:var(--line);color:var(--muted)}
+.btn{border:0;border-radius:11px;padding:11px 16px;background:var(--olive);color:#fff;font-weight:600;cursor:pointer}
+@media (prefers-color-scheme: dark){.btn{color:#161812}}
+.btn.sec{background:var(--olive-soft);color:var(--olive)}
+.btn.danger{background:var(--red-soft);color:var(--red)}
+.btn.sm{padding:7px 12px;font-size:13px;border-radius:9px}
+.btn.block{width:100%}
+.iconbtn{border:0;background:var(--olive-soft);color:var(--olive);width:36px;height:36px;border-radius:10px;font-size:17px;cursor:pointer}
+.fab{position:fixed;right:18px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:7;width:56px;height:56px;border-radius:18px;border:0;background:var(--olive);color:#fff;font-size:28px;box-shadow:0 4px 14px rgba(0,0,0,.2);cursor:pointer}
+@media (prefers-color-scheme: dark){.fab{color:#161812}}
+select.year{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:7px 10px;font-weight:600}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:10px;scrollbar-width:none}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:99px;padding:6px 12px;font-size:13px;white-space:nowrap;cursor:pointer}
+.chip.on{background:var(--olive);border-color:var(--olive);color:#fff}
+@media (prefers-color-scheme: dark){.chip.on{color:#161812}}
+.search{width:100%;border:1px solid var(--line);background:var(--card);border-radius:11px;padding:10px 12px;margin-bottom:10px}
+.empty{color:var(--muted);text-align:center;padding:18px 6px;font-size:14px}
+.warn{background:var(--gold-soft);border:1px solid transparent;color:var(--ink)}
+.warn h2{color:var(--gold)}
+.bars{display:flex;align-items:flex-end;gap:6px;height:110px;padding-top:6px}
+.bars .b{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:3px;min-width:0}
+.bars .b i{display:block;width:100%;max-width:38px;background:var(--olive-2);border-radius:6px 6px 2px 2px;min-height:2px}
+.bars .b.cur i{background:var(--olive)}
+.bars .b small{font-size:10.5px;color:var(--muted)}
+.bars .b em{font-size:10.5px;font-style:normal;font-weight:600}
+.season li{margin:3px 0}
+.season{margin:0;padding-left:18px;font-size:14px}
+.muted{color:var(--muted);font-size:12.5px}
+/* vista lista/mappa */
+.seg{display:flex;background:var(--olive-soft);border-radius:11px;padding:3px;margin-bottom:10px}
+.seg button{flex:1;border:0;background:none;padding:8px;border-radius:9px;font-weight:600;color:var(--olive);cursor:pointer}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+#map{height:58vh;min-height:320px;border-radius:var(--r);border:1px solid var(--line);margin-bottom:8px;position:relative;z-index:0}
+#map.placing{outline:3px solid var(--gold);outline-offset:2px;cursor:crosshair}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12.5px;color:var(--muted);margin:0 2px 12px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px;border:1.5px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+/* Leaflet: regole essenziali */
+.leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-layer{position:absolute;left:0;top:0}
+.leaflet-container{overflow:hidden;touch-action:none;background:#d9dccb;outline:0;font:12px/1.4 -apple-system,sans-serif}
+.leaflet-container img{max-width:none!important;max-height:none!important}
+.leaflet-tile{user-select:none;-webkit-user-drag:none;visibility:hidden}
+.leaflet-tile-loaded{visibility:inherit}
+.leaflet-pane{z-index:400}.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}.leaflet-marker-pane{z-index:600}.leaflet-tooltip-pane{z-index:650}.leaflet-popup-pane{z-index:700}
+.leaflet-overlay-pane svg{max-width:none!important}
+.leaflet-pane>svg path.leaflet-interactive{pointer-events:auto;cursor:pointer}
+.leaflet-zoom-animated{transform-origin:0 0}
+.leaflet-zoom-anim .leaflet-zoom-animated{transition:transform .25s cubic-bezier(0,0,.25,1)}
+.leaflet-zoom-anim .leaflet-tile,.leaflet-pan-anim .leaflet-tile{transition:none}
+.leaflet-zoom-anim .leaflet-zoom-hide{visibility:hidden}
+.leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}
+.leaflet-top{top:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}.leaflet-right{right:0}
+.leaflet-control{position:relative;z-index:800;pointer-events:auto;float:left;clear:both}
+.leaflet-right .leaflet-control{float:right}
+.leaflet-top .leaflet-control{margin-top:10px}.leaflet-left .leaflet-control{margin-left:10px}
+.leaflet-bar{background:#fff;border-radius:9px;box-shadow:0 1px 5px rgba(0,0,0,.3);overflow:hidden}
+.leaflet-bar a{display:block;width:36px;height:36px;line-height:36px;text-align:center;color:#333;text-decoration:none;font:bold 19px sans-serif;border-bottom:1px solid #ddd}
+.leaflet-bar a:last-child{border-bottom:0}
+.leaflet-control-attribution{background:rgba(255,255,255,.75);color:#333;padding:0 5px;font-size:10px}
+.leaflet-control-attribution a{color:#333}
+.leaflet-tooltip{position:absolute;padding:1px 6px;background:rgba(20,22,15,.78);color:#fff;border-radius:6px;font:600 11px/1.4 -apple-system,sans-serif;white-space:nowrap;pointer-events:none;visibility:hidden}
+.labels .leaflet-tooltip{visibility:visible}
+/* sheet */
+#sheet{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.4);display:none;align-items:flex-end;justify-content:center}
+#sheet.open{display:flex}
+#sheet .panel{background:var(--bg);width:100%;max-width:640px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom))}
+#sheet .grab{width:40px;height:4px;border-radius:4px;background:var(--line);margin:0 auto 12px}
+#sheet h3{margin:0 0 12px;font-size:18px}
+label.f{display:block;margin-bottom:11px}
+label.f span{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px;font-weight:600}
+label.f input,label.f select,label.f textarea{width:100%;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px 11px}
+label.f textarea{min-height:70px;resize:vertical}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:12px;color:var(--muted);margin:-6px 0 10px}
+.plist{border:1px solid var(--line);border-radius:10px;background:var(--card);max-height:220px;overflow:auto;padding:4px 10px}
+.plist label{display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+.plist label:first-child{border-top:0}
+.actions{display:flex;gap:10px;margin-top:14px}
+.actions .btn{flex:1}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(140px + env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-size:14px;z-index:30;display:none;max-width:90vw}
+/* auth */
+.auth{max-width:380px;margin:12vh auto 0;padding:0 20px}
+.auth .logo{font-size:44px;text-align:center}
+.auth h1{text-align:center;margin:6px 0 4px}
+.auth p{text-align:center;color:var(--muted);margin:0 0 22px}
+.link{background:none;border:0;color:var(--olive);font-weight:600;cursor:pointer;padding:8px;width:100%}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="sheet"><div class="panel"><div class="grab"></div><div id="sheetBody"></div></div></div>
+<div id="toast"></div>
+
+<script>
+/* ===== Configurazione Supabase (chiave pubblica: i dati sono protetti dalle policy RLS) ===== */
+const SUPABASE_URL = 'https://dhtlqdlhglsbguxokpxx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_TutxUCRCvuECdvFhChNi1g_n7y8xB6G';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ===== Costanti ===== */
+const TIPI = ['potatura','concimazione','trattamento','irrigazione','lavorazione terreno','sfalcio','altro'];
+const TIPO_IC = {potatura:'✂️',concimazione:'🌱',trattamento:'🧪',irrigazione:'💧','lavorazione terreno':'🚜',sfalcio:'🌾',altro:'📝'};
+const STATI = ['sana','sotto osservazione','malata','giovane','morta'];
+const STATO_CL = {'sana':'','sotto osservazione':'gold','malata':'red','giovane':'','morta':'grey'};
+const CAT_SPESA = ['concimi','fitofarmaci','attrezzatura','carburante','manodopera','acqua','imbottigliamento','assicurazione','altro'];
+const CAT_ENTRATA = ['vendita olio','vendita olive','contributi','altro'];
+const STAGIONE = [
+  ['Concimazione organica di fondo','Riposo vegetativo: manutenzione attrezzi','Bilancio dell\'annata appena chiusa'],
+  ['Inizio potatura nei giorni senza gelo','Trattamento rameico dopo i tagli','Pulizia dei polloni'],
+  ['Potatura','Trinciatura dei residui di potatura','Concimazione di ripresa'],
+  ['Fine potatura','Concimazione azotata','Primo sfalcio dell\'erba'],
+  ['Mignolatura e fioritura','Monitoraggio occhio di pavone','Sfalcio'],
+  ['Allegagione','Irrigazione di soccorso se secco','Sfalcio'],
+  ['Trappole per mosca olearia','Irrigazione nei periodi secchi','Controllo stato chiome'],
+  ['Monitoraggio mosca olearia','Irrigazione','Controllo cascola'],
+  ['Monitoraggio mosca e invaiatura','Preparare reti, cassette, abbacchiatori','Prenotare il frantoio'],
+  ['Prenotare/confermare il frantoio','Inizio raccolta varietà precoci','Verifica tempi di carenza dei trattamenti'],
+  ['Raccolta','Molitura entro 24–48 ore dalla raccolta','Trattamento rameico post-raccolta'],
+  ['Fine raccolta','Concimazione organica','Chiusura conti dell\'annata']
+];
+const MESI = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
+const MESI_L = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+
+/* ===== Stato ===== */
+const S = { user:null, tab:'home', year:new Date().getFullYear(), filtroTipo:'tutti', filtroApp:'tutti', q:'',
+  vista:'lista', colore:'stato', sfondo:'satellite', posiziona:false, posSel:null,
+  appezzamenti:[], piante:[], interventi:[], raccolte:[], moliture:[], movimenti:[] };
+
+/* ===== Utility ===== */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = (n, d=1) => Number(n||0).toLocaleString('it-IT',{maximumFractionDigits:d});
+const eur = n => Number(n||0).toLocaleString('it-IT',{style:'currency',currency:'EUR'});
+const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const fdate = s => s ? new Date(s+'T00:00').toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'}) : '';
+const inYear = (d, y=S.year) => d && d.slice(0,4) === String(y);
+const addDays = (s, n) => { const d=new Date(s+'T00:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+const sum = (arr, f) => arr.reduce((a,x)=>a+(Number(f(x))||0),0);
+const appName = id => S.appezzamenti.find(a=>a.id===id)?.nome || '';
+const pianta = id => S.piante.find(p=>p.id===id);
+const kgOlio = m => m.kg_olio != null ? Number(m.kg_olio) : (m.litri_olio != null ? Number(m.litri_olio)*0.916 : null);
+const litri = m => m.litri_olio != null ? Number(m.litri_olio) : (m.kg_olio != null ? Number(m.kg_olio)/0.916 : null);
+
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.style.display='block'; clearTimeout(toast._t); toast._t=setTimeout(()=>t.style.display='none',3200); }
+function fail(e){ console.error(e); toast('Errore: '+(e?.message||e)); }
+
+/* ===== Dati ===== */
+async function loadAll(){
+  const q = (t, sel='*', ord='created_at') => sb.from(t).select(sel).order(ord,{ascending:false});
+  const res = await Promise.all([
+    q('appezzamenti','*','nome'), sb.from('piante').select('*').order('codice'),
+    q('interventi','*, intervento_piante(pianta_id)','data'), q('raccolte','*','data'),
+    q('moliture','*','data'), q('movimenti','*','data')
+  ]);
+  const err = res.find(r=>r.error); if (err) throw err.error;
+  [S.appezzamenti,S.piante,S.interventi,S.raccolte,S.moliture,S.movimenti] = res.map(r=>r.data);
+  S.appezzamenti.sort((a,b)=>a.nome.localeCompare(b.nome));
+  S.piante.sort((a,b)=>a.codice.localeCompare(b.codice,'it',{numeric:true}));
+}
+async function save(table, values, id){
+  const q = id ? sb.from(table).update(values).eq('id',id) : sb.from(table).insert(values);
+  const { data, error } = await q.select().single();
+  if (error) throw error; return data;
+}
+async function remove(table, id){
+  if (!confirm('Eliminare definitivamente questo elemento?')) return false;
+  const { error } = await sb.from(table).delete().eq('id', id);
+  if (error) throw error; return true;
+}
+async function refresh(){ try{ await loadAll(); render(); }catch(e){ fail(e); } }
+
+/* ===== Calcoli annata ===== */
+function annata(y){
+  const rac = S.raccolte.filter(r=>inYear(r.data,y));
+  const mol = S.moliture.filter(m=>inYear(m.data,y));
+  const int = S.interventi.filter(i=>inYear(i.data,y));
+  const mov = S.movimenti.filter(m=>inYear(m.data,y));
+  const kgRacc = sum(rac,r=>r.kg_olive);
+  const kgMol = sum(mol,m=>m.kg_olive);
+  const molConOlio = mol.filter(m=>kgOlio(m)!=null);
+  const resa = sum(molConOlio,m=>m.kg_olive) ? sum(molConOlio,kgOlio)/sum(molConOlio,m=>m.kg_olive)*100 : null;
+  const lt = sum(mol, m=>litri(m)||0);
+  const spese = sum(mov.filter(m=>m.tipo==='spesa'),m=>m.importo) + sum(int,i=>i.costo) + sum(mol,m=>m.costo);
+  const entrate = sum(mov.filter(m=>m.tipo==='entrata'),m=>m.importo);
+  const ore = sum(int,i=>i.ore);
+  return { rac, mol, int, mov, kgRacc, kgMol, resa, lt, spese, entrate, ore };
+}
+function anni(){
+  const ys = new Set([new Date().getFullYear()]);
+  [S.raccolte,S.moliture,S.interventi,S.movimenti].forEach(a=>a.forEach(x=>x.data&&ys.add(+x.data.slice(0,4))));
+  return [...ys].sort((a,b)=>b-a);
+}
+function interventiPianta(p){
+  return S.interventi.filter(i=>{
+    const ids = (i.intervento_piante||[]).map(x=>x.pianta_id);
+    if (ids.length) return ids.includes(p.id);
+    if (i.appezzamento_id) return i.appezzamento_id === p.appezzamento_id;
+    return true; // intervento sull'intero uliveto
+  });
+}
+function targetLabel(i){
+  const n = (i.intervento_piante||[]).length;
+  if (n === 1) return 'Pianta '+(pianta(i.intervento_piante[0].pianta_id)?.codice||'');
+  if (n > 1) return n+' piante';
+  if (i.appezzamento_id) return appName(i.appezzamento_id);
+  return 'Intero uliveto';
+}
+
+/* ===== Render ===== */
+function render(){
+  if (!S.user) return renderAuth();
+  const ys = anni(); if (!ys.includes(S.year)) S.year = ys[0];
+  $('#app').innerHTML = `
+    <header>
+      <h1>🫒 <span>Uliveto</span></h1>
+      <select class="year" onchange="S.year=+this.value;render()">${ys.map(y=>`<option ${y===S.year?'selected':''}>${y}</option>`).join('')}</select>
+      <button class="iconbtn" onclick="openSettings()" aria-label="Impostazioni">⚙︎</button>
+    </header>
+    <main id="view"></main>
+    ${['home','piante','lavori'].includes(S.tab)||S.tab==='raccolta'||S.tab==='conti' ? `<button class="fab" onclick="fab()" aria-label="Aggiungi">+</button>`:''}
+    <nav class="tabs">
+      ${[['home','🏡','Annata'],['piante','🌳','Piante'],['lavori','🛠️','Lavori'],['raccolta','🧺','Raccolta'],['conti','💶','Conti']]
+        .map(([k,ic,l])=>`<button class="${S.tab===k?'on':''}" onclick="S.tab='${k}';render();scrollTo(0,0)"><span class="ic">${ic}</span>${l}</button>`).join('')}
+    </nav>`;
+  ({home:viewHome,piante:viewPiante,lavori:viewLavori,raccolta:viewRaccolta,conti:viewConti})[S.tab]();
+}
+
+function viewHome(){
+  const a = annata(S.year), p = annata(S.year-1);
+  const delta = (v, pv, u='') => pv ? `<div class="d">${S.year-1}: ${num(pv)}${u}</div>` : '';
+  const oggi = today();
+  const carenze = S.interventi.filter(i=>i.tipo==='trattamento' && i.giorni_carenza && addDays(i.data,i.giorni_carenza) >= oggi && i.data <= oggi);
+  const m = new Date().getMonth();
+  const top = Object.entries(a.rac.filter(r=>r.pianta_id).reduce((acc,r)=>(acc[r.pianta_id]=(acc[r.pianta_id]||0)+Number(r.kg_olive),acc),{}))
+    .sort((x,y)=>y[1]-x[1]).slice(0,5);
+  const ys = anni().slice(0,6).reverse();
+  const perAnno = ys.map(y=>({y, kg: sum(S.raccolte.filter(r=>inYear(r.data,y)),r=>r.kg_olive)}));
+  const maxKg = Math.max(1,...perAnno.map(x=>x.kg));
+  const vuoto = !S.piante.length;
+
+  $('#view').innerHTML = `
+    ${vuoto ? `<div class="card"><h2>👋 Iniziamo</h2>
+      <p style="margin:0 0 12px">Crea gli appezzamenti del tuo uliveto e poi aggiungi le piante (anche in blocco, es. da A-1 ad A-80).</p>
+      <div class="actions" style="margin-top:0"><button class="btn sec" onclick="formAppezzamento()">+ Appezzamento</button><button class="btn" onclick="formBlocco()">+ Piante in blocco</button></div></div>`:''}
+    ${carenze.length ? `<div class="card warn"><h2>⚠️ Tempi di carenza in corso</h2>
+      ${carenze.map(i=>`<div class="row"><div class="main"><div class="t">${esc(i.prodotto||'Trattamento')}</div><div class="s">${esc(targetLabel(i))} · trattato il ${fdate(i.data)}</div></div><div class="n">no raccolta fino al ${fdate(addDays(i.data,i.giorni_carenza))}</div></div>`).join('')}</div>`:''}
+    <div class="kpis">
+      <div class="kpi"><div class="l">Olive raccolte</div><div class="v">${num(a.kgRacc,0)} kg</div>${delta(a.kgRacc,p.kgRacc,' kg')}</div>
+      <div class="kpi"><div class="l">Olio prodotto</div><div class="v">${num(a.lt,0)} L</div>${delta(a.lt,p.lt,' L')}</div>
+      <div class="kpi"><div class="l">Resa media</div><div class="v">${a.resa!=null?num(a.resa)+'%':'—'}</div>${p.resa!=null?`<div class="d">${S.year-1}: ${num(p.resa)}%</div>`:''}</div>
+      <div class="kpi"><div class="l">Costo per litro</div><div class="v">${a.lt?eur(a.spese/a.lt):'—'}</div><div class="d">spese ${eur(a.spese)}</div></div>
+    </div>
+    <div class="card"><h2>📅 ${MESI_L[m]}: cosa fare di solito</h2>
+      <ul class="season">${STAGIONE[m].map(s=>`<li>${esc(s)}</li>`).join('')}</ul>
+      <div class="muted" style="margin-top:6px">Indicazioni generali: adatta a zona, varietà e andamento stagionale.</div></div>
+    <div class="card"><h2>📊 Olive raccolte per anno</h2>
+      <div class="bars">${perAnno.map(x=>`<div class="b ${x.y===S.year?'cur':''}"><em>${x.kg?num(x.kg,0):''}</em><i style="height:${x.kg/maxKg*80}%"></i><small>${x.y}</small></div>`).join('')}</div></div>
+    <div class="card"><h2>🏆 Piante più produttive ${S.year}</h2>
+      ${top.length ? top.map(([id,kg])=>{const pp=pianta(id);return pp?`<div class="row tap" onclick="detPianta('${id}')"><div class="main"><div class="t">${esc(pp.codice)}</div><div class="s">${esc(pp.varieta||'')} ${pp.appezzamento_id?'· '+esc(appName(pp.appezzamento_id)):''}</div></div><div class="n">${num(kg)} kg</div></div>`:''}).join('')
+        : `<div class="empty">Registra le raccolte per pianta per vedere la classifica.</div>`}</div>
+    <div class="card"><h2>🛠️ Ultimi lavori<span class="sp"></span><button class="btn sm sec" onclick="S.tab='lavori';render()">Tutti</button></h2>
+      ${a.int.slice(0,5).map(rowIntervento).join('') || `<div class="empty">Nessun lavoro registrato nel ${S.year}.</div>`}</div>`;
+}
+
+function rowIntervento(i){
+  const det = [targetLabel(i), i.prodotto, i.ore?num(i.ore)+' h':null].filter(Boolean).join(' · ');
+  return `<div class="row tap" onclick="formIntervento('${i.id}')"><div style="font-size:22px">${TIPO_IC[i.tipo]||'📝'}</div>
+    <div class="main"><div class="t">${esc(i.tipo[0].toUpperCase()+i.tipo.slice(1))}${i.descrizione?' — '+esc(i.descrizione):''}</div><div class="s">${fdate(i.data)} · ${esc(det)}</div></div>
+    ${i.costo?`<div class="n">${eur(i.costo)}</div>`:''}</div>`;
+}
+
+function viewPiante(){
+  if (S.vista==='mappa') return viewMappa();
+  const kgY = {}; S.raccolte.filter(r=>inYear(r.data)&&r.pianta_id).forEach(r=>kgY[r.pianta_id]=(kgY[r.pianta_id]||0)+Number(r.kg_olive));
+  const q = S.q.toLowerCase();
+  const list = S.piante.filter(p=>(S.filtroApp==='tutti'||p.appezzamento_id===S.filtroApp) &&
+    (!q || [p.codice,p.varieta,p.note].some(x=>(x||'').toLowerCase().includes(q))));
+  $('#view').innerHTML = `${toggleVista()}
+    <input class="search" placeholder="Cerca per codice, varietà, note…" value="${esc(S.q)}" oninput="S.q=this.value;viewPiante();const s=document.querySelector('.search');s.focus();s.setSelectionRange(s.value.length,s.value.length)">
+    ${S.appezzamenti.length?`<div class="chips"><button class="chip ${S.filtroApp==='tutti'?'on':''}" onclick="S.filtroApp='tutti';viewPiante()">Tutti</button>
+      ${S.appezzamenti.map(a=>`<button class="chip ${S.filtroApp===a.id?'on':''}" onclick="S.filtroApp='${a.id}';viewPiante()">${esc(a.nome)}</button>`).join('')}</div>`:''}
+    <div class="card"><h2>${list.length} piante<span class="sp"></span><button class="btn sm sec" onclick="formBlocco()">+ In blocco</button></h2>
+      ${list.map(p=>`<div class="row tap" onclick="detPianta('${p.id}')"><div class="main"><div class="t">${esc(p.codice)} ${p.stato!=='sana'?`<span class="badge ${STATO_CL[p.stato]}">${esc(p.stato)}</span>`:''}</div>
+        <div class="s">${[p.varieta,appName(p.appezzamento_id),p.anno_impianto?'impianto '+p.anno_impianto:null].filter(Boolean).map(esc).join(' · ')||'—'}</div></div>
+        <div class="n">${kgY[p.id]?num(kgY[p.id])+' kg':''}</div></div>`).join('') || `<div class="empty">Nessuna pianta. Usa + per aggiungerne.</div>`}</div>`;
+}
+
+/* ===== Mappa ===== */
+const COL_STATO = {'sana':'#5f7f1f','sotto osservazione':'#e0a800','malata':'#c0392b','giovane':'#9ccc65','morta':'#8a8a8a'};
+const COL_PROD = ['#b5b5b5','#f3e79b','#c9d46a','#7fa33a','#3f5f14'];
+function toggleVista(){
+  return `<div class="seg"><button class="${S.vista==='lista'?'on':''}" onclick="S.vista='lista';viewPiante()">☰ Lista</button><button class="${S.vista==='mappa'?'on':''}" onclick="S.vista='mappa';viewPiante()">🗺️ Mappa</button></div>`;
+}
+function viewMappa(){
+  const con = S.piante.filter(p=>p.lat!=null&&p.lng!=null);
+  const senza = S.piante.filter(p=>p.lat==null||p.lng==null);
+  if (!S.posSel || !pianta(S.posSel)) S.posSel = (senza[0]||S.piante[0])?.id || null;
+  const kg = {}; S.raccolte.filter(r=>inYear(r.data)&&r.pianta_id).forEach(r=>kg[r.pianta_id]=(kg[r.pianta_id]||0)+Number(r.kg_olive));
+  const mx = Math.max(0,...Object.values(kg));
+  const fascia = k => !k ? 0 : k<=mx*.25 ? 1 : k<=mx*.5 ? 2 : k<=mx*.75 ? 3 : 4;
+  const colore = p => S.colore==='stato' ? (COL_STATO[p.stato]||COL_STATO.sana) : COL_PROD[fascia(kg[p.id])];
+  const legenda = S.colore==='stato'
+    ? STATI.map(s=>[COL_STATO[s], s, con.filter(p=>p.stato===s).length])
+    : mx ? [[COL_PROD[0],'nessuna raccolta'],[COL_PROD[1],'fino a '+num(mx*.25)+' kg'],[COL_PROD[2],'fino a '+num(mx*.5)+' kg'],[COL_PROD[3],'fino a '+num(mx*.75)+' kg'],[COL_PROD[4],'fino a '+num(mx)+' kg']]
+         : [[COL_PROD[0],'nessuna raccolta per pianta nel '+S.year]];
+  $('#view').innerHTML = `${toggleVista()}
+    <div class="chips">
+      <button class="chip ${S.colore==='stato'?'on':''}" onclick="S.colore='stato';viewMappa()">Colore: stato</button>
+      <button class="chip ${S.colore==='produzione'?'on':''}" onclick="S.colore='produzione';viewMappa()">Colore: produzione ${S.year}</button>
+      <button class="chip" onclick="S.sfondo=S.sfondo==='satellite'?'stradale':'satellite';viewMappa()">${S.sfondo==='satellite'?'🗺️ Stradale':'🛰️ Satellite'}</button>
+    </div>
+    <div id="map" class="${S.posiziona?'placing':''}"></div>
+    <div class="legend">${legenda.map(([c,l,n])=>`<span><i style="background:${c}"></i>${esc(l)}${n!=null?` (${n})`:''}</span>`).join('')}</div>
+    ${S.piante.length?`<div class="card"><h2>📍 Posiziona piante<span class="sp"></span><span class="badge ${senza.length?'gold':''}">${senza.length?senza.length+' da posizionare':'tutte posizionate'}</span></h2>
+      <label class="f"><span>Pianta</span><select onchange="S.posSel=this.value">${[...senza,...con].map(p=>`<option value="${p.id}" ${p.id===S.posSel?'selected':''}>${esc(p.codice)}${p.lat==null?' · da posizionare':' · già posizionata'}</option>`).join('')}</select></label>
+      <div class="actions" style="margin-top:0">
+        <button class="btn sec" onclick="posGps()">📍 Sono qui (GPS)</button>
+        <button class="btn ${S.posiziona?'':'sec'}" onclick="S.posiziona=!S.posiziona;viewMappa();if(S.posiziona)toast('Tocca sulla mappa il punto della pianta')">${S.posiziona?'✓ Tocca la mappa…':'👆 Tocca sulla mappa'}</button>
+      </div>
+      <div class="muted" style="margin-top:8px">Dopo ogni pianta posizionata l'app passa da sola alla successiva. Il GPS del telefono può sbagliare di qualche metro: per alberi vicini è più preciso toccare la chioma sulla vista satellite.</div></div>`
+    : '<div class="empty">Aggiungi prima le piante, poi posizionale sulla mappa.</div>'}`;
+  initMap(con, colore);
+}
+function initMap(con, colore){
+  if (!window.L){ $('#map').innerHTML = '<div class="empty">Mappa non disponibile: libreria non caricata.</div>'; return; }
+  try { S._map && S._map.remove(); } catch(e){}
+  const map = S._map = L.map('map', { maxZoom:21 });
+  const sat = S.sfondo==='satellite';
+  L.tileLayer(sat ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}' : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    { maxZoom:21, maxNativeZoom:19, attribution: sat ? 'Esri World Imagery' : '© OpenStreetMap' }).addTo(map);
+  con.forEach(p => {
+    L.circleMarker([p.lat,p.lng], { radius:8, color:'#fff', weight:2, fillColor:colore(p), fillOpacity:.95 })
+      .bindTooltip(esc(p.codice), { permanent:true, direction:'top', offset:[0,-8] })
+      .on('click', ev => { L.DomEvent.stopPropagation(ev); if (!S.posiziona) detPianta(p.id); })
+      .addTo(map);
+  });
+  if (S._mapView) map.setView(S._mapView.c, S._mapView.z);
+  else if (con.length) map.fitBounds(L.latLngBounds(con.map(p=>[p.lat,p.lng])).pad(0.15), { maxZoom:19 });
+  else {
+    map.setView([41.9,12.5], 6);
+    navigator.geolocation?.getCurrentPosition(pos => map.setView([pos.coords.latitude,pos.coords.longitude], 18), ()=>{}, { timeout:8000 });
+  }
+  const etichette = () => map.getContainer().classList.toggle('labels', map.getZoom() >= 20);
+  map.on('moveend zoomend', () => { S._mapView = { c:map.getCenter(), z:map.getZoom() }; etichette(); });
+  map.on('click', e => { if (S.posiziona && S.posSel) assegnaPos(S.posSel, e.latlng.lat, e.latlng.lng); });
+  etichette();
+}
+function posGps(){
+  if (!S.posSel) return;
+  if (!navigator.geolocation) return toast('Geolocalizzazione non disponibile');
+  toast('Rilevo la posizione…');
+  navigator.geolocation.getCurrentPosition(
+    pos => assegnaPos(S.posSel, pos.coords.latitude, pos.coords.longitude, Math.round(pos.coords.accuracy)),
+    e => toast('Posizione non disponibile: '+e.message),
+    { enableHighAccuracy:true, timeout:15000, maximumAge:0 });
+}
+async function assegnaPos(id, lat, lng, acc){
+  const p = pianta(id); if (!p) return;
+  if (p.lat!=null && !confirm(`${p.codice} ha già una posizione. Sostituirla?`)) return;
+  const v = { lat:+lat.toFixed(7), lng:+lng.toFixed(7) };
+  const { error } = await sb.from('piante').update(v).eq('id', id);
+  if (error) return fail(error);
+  Object.assign(p, v);
+  const next = S.piante.find(x=>x.lat==null||x.lng==null);
+  S.posSel = next?.id || id;
+  if (!next) S.posiziona = false;
+  toast(`${p.codice} posizionata${acc?` (±${acc} m)`:''}${next?` · ora tocca a ${next.codice}`:' · tutte posizionate ✓'}`);
+  viewMappa();
+}
+
+function detPianta(id){
+  const p = pianta(id); if(!p) return;
+  const ys = anni().slice(0,6).reverse();
+  const prod = ys.map(y=>({y,kg:sum(S.raccolte.filter(r=>r.pianta_id===id&&inYear(r.data,y)),r=>r.kg_olive)}));
+  const mx = Math.max(1,...prod.map(x=>x.kg));
+  const storia = interventiPianta(p).slice(0,15);
+  openSheet(`<h3>🌳 Pianta ${esc(p.codice)}</h3>
+    <div class="card">
+      <div class="row"><div class="main">Stato</div><span class="badge ${STATO_CL[p.stato]}">${esc(p.stato)}</span></div>
+      ${p.varieta?`<div class="row"><div class="main">Varietà</div><div class="n">${esc(p.varieta)}</div></div>`:''}
+      ${p.appezzamento_id?`<div class="row"><div class="main">Appezzamento</div><div class="n">${esc(appName(p.appezzamento_id))}</div></div>`:''}
+      ${p.anno_impianto?`<div class="row"><div class="main">Impianto</div><div class="n">${p.anno_impianto} (${new Date().getFullYear()-p.anno_impianto} anni)</div></div>`:''}
+      ${p.lat?`<div class="row"><div class="main">Posizione</div><a class="n" href="https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lng}#map=19/${p.lat}/${p.lng}" target="_blank" rel="noopener">mappa ↗</a></div>`:''}
+      ${p.note?`<div class="row"><div class="main s" style="white-space:normal">${esc(p.note)}</div></div>`:''}
+    </div>
+    <div class="card"><h2>Produzione (kg olive)</h2>
+      <div class="bars">${prod.map(x=>`<div class="b ${x.y===S.year?'cur':''}"><em>${x.kg?num(x.kg):''}</em><i style="height:${x.kg/mx*80}%"></i><small>${x.y}</small></div>`).join('')}</div></div>
+    <div class="card"><h2>Storico lavori</h2>${storia.map(rowIntervento).join('')||'<div class="empty">Nessun lavoro.</div>'}</div>
+    <div class="actions">
+      <button class="btn sec" onclick="formRaccolta(null,'${id}')">+ Raccolta</button>
+      <button class="btn sec" onclick="formIntervento(null,['${id}'])">+ Lavoro</button>
+    </div>
+    <div class="actions"><button class="btn block" onclick="formPianta('${id}')">Modifica pianta</button></div>`);
+}
+
+function viewLavori(){
+  const list = S.interventi.filter(i=>inYear(i.data) && (S.filtroTipo==='tutti'||i.tipo===S.filtroTipo));
+  const a = annata(S.year);
+  $('#view').innerHTML = `
+    <div class="chips">${['tutti',...TIPI].map(t=>`<button class="chip ${S.filtroTipo===t?'on':''}" onclick="S.filtroTipo='${t}';viewLavori()">${t==='tutti'?'Tutti':(TIPO_IC[t]+' '+t)}</button>`).join('')}</div>
+    <div class="kpis"><div class="kpi"><div class="l">Ore di lavoro ${S.year}</div><div class="v">${num(a.ore)}</div></div>
+      <div class="kpi"><div class="l">Costo lavori ${S.year}</div><div class="v">${eur(sum(a.int,i=>i.costo))}</div></div></div>
+    <div class="card"><h2>${list.length} lavori nel ${S.year}</h2>${list.map(rowIntervento).join('')||'<div class="empty">Nessun lavoro. Usa + per registrarne uno.</div>'}</div>`;
+}
+
+function viewRaccolta(){
+  const a = annata(S.year);
+  const residuo = a.kgRacc - a.kgMol;
+  $('#view').innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="l">Olive raccolte</div><div class="v">${num(a.kgRacc,0)} kg</div></div>
+      <div class="kpi"><div class="l">Portate al frantoio</div><div class="v">${num(a.kgMol,0)} kg</div>${residuo>0?`<div class="d">${num(residuo,0)} kg ancora da molire</div>`:''}</div>
+      <div class="kpi"><div class="l">Olio</div><div class="v">${num(a.lt,0)} L</div></div>
+      <div class="kpi"><div class="l">Resa</div><div class="v">${a.resa!=null?num(a.resa)+'%':'—'}</div></div>
+    </div>
+    <div class="card"><h2>🏭 Moliture<span class="sp"></span><button class="btn sm sec" onclick="formMolitura()">+ Molitura</button></h2>
+      ${a.mol.map(m=>{const r=kgOlio(m)!=null?kgOlio(m)/m.kg_olive*100:null;return `<div class="row tap" onclick="formMolitura('${m.id}')"><div class="main">
+        <div class="t">${num(m.kg_olive,0)} kg → ${litri(m)!=null?num(litri(m))+' L':'—'}</div><div class="s">${fdate(m.data)}${m.frantoio?' · '+esc(m.frantoio):''}${m.costo?' · '+eur(m.costo):''}</div></div>
+        ${r!=null?`<span class="badge gold">resa ${num(r)}%</span>`:''}</div>`}).join('') || '<div class="empty">Nessuna molitura registrata.</div>'}</div>
+    <div class="card"><h2>🧺 Raccolte<span class="sp"></span><button class="btn sm sec" onclick="formRaccolta()">+ Raccolta</button></h2>
+      ${a.rac.map(r=>`<div class="row tap" onclick="formRaccolta('${r.id}')"><div class="main">
+        <div class="t">${r.pianta_id?'Pianta '+esc(pianta(r.pianta_id)?.codice||''):(r.appezzamento_id?esc(appName(r.appezzamento_id)):'Intero uliveto')}</div>
+        <div class="s">${fdate(r.data)}${r.note?' · '+esc(r.note):''}</div></div><div class="n">${num(r.kg_olive)} kg</div></div>`).join('') || '<div class="empty">Nessuna raccolta registrata.</div>'}</div>`;
+}
+
+function viewConti(){
+  const a = annata(S.year);
+  const auto = [
+    ...a.int.filter(i=>i.costo).map(i=>({data:i.data,tipo:'spesa',categoria:'lavori',descrizione:i.tipo+(i.prodotto?' · '+i.prodotto:''),importo:i.costo,_open:`formIntervento('${i.id}')`})),
+    ...a.mol.filter(m=>m.costo).map(m=>({data:m.data,tipo:'spesa',categoria:'frantoio',descrizione:'Molitura '+num(m.kg_olive,0)+' kg',importo:m.costo,_open:`formMolitura('${m.id}')`}))
+  ];
+  const all = [...a.mov.map(m=>({...m,_open:`formMovimento('${m.id}')`})), ...auto].sort((x,y)=>y.data.localeCompare(x.data));
+  const perCat = {}; all.filter(m=>m.tipo==='spesa').forEach(m=>perCat[m.categoria]=(perCat[m.categoria]||0)+Number(m.importo));
+  const cats = Object.entries(perCat).sort((x,y)=>y[1]-x[1]); const mx = Math.max(1,...cats.map(c=>c[1]));
+  $('#view').innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="l">Spese ${S.year}</div><div class="v">${eur(a.spese)}</div></div>
+      <div class="kpi"><div class="l">Entrate ${S.year}</div><div class="v">${eur(a.entrate)}</div></div>
+      <div class="kpi"><div class="l">Saldo</div><div class="v" style="color:${a.entrate-a.spese<0?'var(--red)':'var(--olive)'}">${eur(a.entrate-a.spese)}</div></div>
+      <div class="kpi"><div class="l">Costo per litro</div><div class="v">${a.lt?eur(a.spese/a.lt):'—'}</div></div>
+    </div>
+    ${cats.length?`<div class="card"><h2>Spese per categoria</h2>${cats.map(([c,v])=>`<div style="margin:8px 0"><div style="display:flex;font-size:13.5px"><span style="flex:1">${esc(c)}</span><b>${eur(v)}</b></div>
+      <div style="height:7px;background:var(--olive-soft);border-radius:4px;margin-top:3px"><div style="height:100%;width:${v/mx*100}%;background:var(--olive-2);border-radius:4px"></div></div></div>`).join('')}</div>`:''}
+    <div class="card"><h2>Movimenti</h2>
+      <div class="muted" style="margin:-4px 0 6px">I costi inseriti nei lavori e nelle moliture vengono contati qui in automatico.</div>
+      ${all.map(m=>`<div class="row tap" onclick="${m._open}"><div class="main"><div class="t">${esc(m.descrizione||m.categoria)}</div><div class="s">${fdate(m.data)} · ${esc(m.categoria)}</div></div>
+        <div class="n" style="color:${m.tipo==='entrata'?'var(--olive)':'inherit'}">${m.tipo==='entrata'?'+':'−'}${eur(m.importo)}</div></div>`).join('') || '<div class="empty">Nessun movimento.</div>'}</div>`;
+}
+
+/* ===== Sheet & form ===== */
+function openSheet(html){ $('#sheetBody').innerHTML = html; $('#sheet').classList.add('open'); $('#sheet .panel').scrollTop=0; }
+function closeSheet(){ $('#sheet').classList.remove('open'); }
+$('#sheet').addEventListener('click', e=>{ if(e.target.id==='sheet') closeSheet(); });
+
+function fieldHtml(f){
+  const v = f.value ?? '';
+  const req = f.required ? 'required' : '';
+  let input;
+  if (f.type==='select') input = `<select name="${f.name}" ${req}>${f.empty!==false?`<option value="">${f.empty||'—'}</option>`:''}${f.options.map(o=>{const [val,lab]=Array.isArray(o)?o:[o,o];return `<option value="${esc(val)}" ${String(val)===String(v)?'selected':''}>${esc(lab)}</option>`}).join('')}</select>`;
+  else if (f.type==='textarea') input = `<textarea name="${f.name}">${esc(v)}</textarea>`;
+  else if (f.type==='piante') {
+    const sel = new Set(f.value||[]);
+    input = `<div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+      <button type="button" class="btn sm sec" onclick="selPiante(true)">Tutte</button>
+      <button type="button" class="btn sm sec" onclick="selPiante(false)">Nessuna</button>
+      ${S.appezzamenti.map(a=>`<button type="button" class="btn sm sec" onclick="selPiante('${a.id}')">${esc(a.nome)}</button>`).join('')}</div>
+      <div class="plist">${S.piante.map(p=>`<label><input type="checkbox" name="piante" value="${p.id}" data-app="${p.appezzamento_id||''}" ${sel.has(p.id)?'checked':''}> ${esc(p.codice)} <span class="muted">${esc(p.varieta||'')}</span></label>`).join('')||'<div class="empty">Nessuna pianta ancora.</div>'}</div>`;
+  }
+  else input = `<input name="${f.name}" type="${f.type||'text'}" ${f.type==='number'?'step="any" inputmode="decimal"':''} value="${esc(v)}" ${req} ${f.ph?`placeholder="${esc(f.ph)}"`:''}>`;
+  return `<label class="f"><span>${esc(f.label)}</span>${input}</label>${f.hint?`<div class="hint">${esc(f.hint)}</div>`:''}`;
+}
+function selPiante(m){ document.querySelectorAll('input[name=piante]').forEach(c=>c.checked = m===true ? true : m===false ? false : (c.checked || c.dataset.app===m)); }
+
+function openForm({title, fields, onSubmit, onDelete, extra=''}){
+  const rows = []; // affianca campi marcati half
+  for (let i=0;i<fields.length;i++){
+    const f=fields[i];
+    if (f.half && fields[i+1]?.half){ rows.push(`<div class="grid2"><div>${fieldHtml(f)}</div><div>${fieldHtml(fields[i+1])}</div></div>`); i++; }
+    else rows.push(fieldHtml(f));
+  }
+  openSheet(`<h3>${esc(title)}</h3><form id="frm">${rows.join('')}${extra}
+    <div class="actions">${onDelete?'<button type="button" class="btn danger" id="del">Elimina</button>':''}<button type="button" class="btn sec" onclick="closeSheet()">Annulla</button><button class="btn" type="submit">Salva</button></div></form>`);
+  const frm = $('#frm');
+  frm.onsubmit = async e => {
+    e.preventDefault();
+    const fd = new FormData(frm), vals = {};
+    for (const f of fields){
+      if (f.type==='piante') { vals[f.name] = fd.getAll('piante'); continue; }
+      let v = fd.get(f.name); v = (v===null||v==='') ? null : v;
+      if (v!==null && f.type==='number') v = Number(String(v).replace(',','.'));
+      vals[f.name] = v;
+    }
+    const btn = frm.querySelector('[type=submit]'); btn.disabled = true; btn.textContent='Salvo…';
+    try { await onSubmit(vals); closeSheet(); await refresh(); toast('Salvato ✓'); }
+    catch(err){ fail(err); btn.disabled=false; btn.textContent='Salva'; }
+  };
+  if (onDelete) $('#del').onclick = async ()=>{ try{ if(await onDelete()){ closeSheet(); await refresh(); toast('Eliminato'); } }catch(err){ fail(err); } };
+}
+
+const appOpts = () => S.appezzamenti.map(a=>[a.id,a.nome]);
+const pianteOpts = () => S.piante.map(p=>[p.id, p.codice+(p.varieta?' · '+p.varieta:'')]);
+
+function fab(){
+  ({home:()=>quickAdd(), piante:()=>formPianta(), lavori:()=>formIntervento(), raccolta:()=>formRaccolta(), conti:()=>formMovimento()})[S.tab]();
+}
+function quickAdd(){
+  openSheet(`<h3>Aggiungi</h3><div class="card">
+    ${[['🛠️','Lavoro / trattamento','formIntervento()'],['🧺','Raccolta','formRaccolta()'],['🏭','Molitura','formMolitura()'],['💶','Spesa o entrata','formMovimento()'],['🌳','Pianta','formPianta()']]
+      .map(([ic,l,fn])=>`<div class="row tap" onclick="${fn}"><div style="font-size:22px">${ic}</div><div class="main"><div class="t">${l}</div></div><div class="muted">›</div></div>`).join('')}</div>`);
+}
+
+function formAppezzamento(id){
+  const a = S.appezzamenti.find(x=>x.id===id) || {};
+  openForm({ title: id?'Modifica appezzamento':'Nuovo appezzamento', fields:[
+    {name:'nome',label:'Nome',required:true,value:a.nome,ph:'es. Uliveto basso'},
+    {name:'superficie_mq',label:'Superficie (m²)',type:'number',value:a.superficie_mq},
+    {name:'note',label:'Note',type:'textarea',value:a.note}],
+    onSubmit: v=>save('appezzamenti',v,id), onDelete: id&&(()=>remove('appezzamenti',id)) });
+}
+
+function formPianta(id){
+  const p = pianta(id) || {};
+  openForm({ title: id?'Modifica pianta '+p.codice:'Nuova pianta', fields:[
+    {name:'codice',label:'Codice',required:true,value:p.codice,ph:'es. A-12',half:true},
+    {name:'stato',label:'Stato',type:'select',options:STATI,value:p.stato||'sana',empty:false,half:true},
+    {name:'varieta',label:'Varietà',value:p.varieta,ph:'es. Frantoio, Leccino, Coratina',half:true},
+    {name:'anno_impianto',label:'Anno impianto',type:'number',value:p.anno_impianto,half:true},
+    {name:'appezzamento_id',label:'Appezzamento',type:'select',options:appOpts(),value:p.appezzamento_id},
+    {name:'lat',label:'Latitudine',type:'number',value:p.lat,half:true},
+    {name:'lng',label:'Longitudine',type:'number',value:p.lng,half:true},
+    {name:'note',label:'Note',type:'textarea',value:p.note}],
+    extra:`<button type="button" class="btn sm sec" style="margin:-4px 0 10px" onclick="gps()">📍 Usa la mia posizione</button>`,
+    onSubmit: v=>save('piante',v,id), onDelete: id&&(()=>remove('piante',id)) });
+}
+function gps(){
+  if(!navigator.geolocation) return toast('Geolocalizzazione non disponibile');
+  navigator.geolocation.getCurrentPosition(pos=>{ $('[name=lat]').value=pos.coords.latitude.toFixed(6); $('[name=lng]').value=pos.coords.longitude.toFixed(6); toast('Posizione inserita'); },
+    ()=>toast('Posizione non disponibile'),{enableHighAccuracy:true,timeout:10000});
+}
+
+function formBlocco(){
+  openForm({ title:'Aggiungi piante in blocco', fields:[
+    {name:'prefisso',label:'Prefisso codice',value:'A-',half:true},
+    {name:'cifre',label:'Cifre (es. 3 → 001)',type:'number',value:1,half:true},
+    {name:'da',label:'Dal numero',type:'number',required:true,value:1,half:true},
+    {name:'a',label:'Al numero',type:'number',required:true,value:50,half:true},
+    {name:'appezzamento_id',label:'Appezzamento',type:'select',options:appOpts()},
+    {name:'varieta',label:'Varietà',half:true},
+    {name:'anno_impianto',label:'Anno impianto',type:'number',half:true}],
+    onSubmit: async v=>{
+      if (v.a < v.da || v.a - v.da > 2000) throw new Error('Intervallo non valido (max 2000 piante)');
+      const rows=[]; for(let n=v.da;n<=v.a;n++) rows.push({codice:(v.prefisso||'')+String(n).padStart(v.cifre||1,'0'),appezzamento_id:v.appezzamento_id,varieta:v.varieta,anno_impianto:v.anno_impianto});
+      const { error } = await sb.from('piante').insert(rows); if (error) throw error;
+    }});
+}
+
+function formIntervento(id, preset){
+  const i = S.interventi.find(x=>x.id===id) || {};
+  const sel = id ? (i.intervento_piante||[]).map(x=>x.pianta_id) : (preset||[]);
+  openForm({ title: id?'Modifica lavoro':'Nuovo lavoro', fields:[
+    {name:'tipo',label:'Tipo',type:'select',options:TIPI,value:i.tipo||'potatura',empty:false,half:true},
+    {name:'data',label:'Data',type:'date',required:true,value:i.data||today(),half:true},
+    {name:'descrizione',label:'Descrizione',value:i.descrizione,ph:'es. potatura di produzione'},
+    {name:'prodotto',label:'Prodotto',value:i.prodotto,ph:'es. concime, fitofarmaco'},
+    {name:'dose',label:'Dose',type:'number',value:i.dose,half:true},
+    {name:'unita',label:'Unità',value:i.unita,ph:'kg, L, g/hl…',half:true},
+    {name:'giorni_carenza',label:'Giorni di carenza',type:'number',value:i.giorni_carenza,hint:'Per i trattamenti: dall\'etichetta del prodotto. L\'app ti avvisa fino a quando non raccogliere.'},
+    {name:'ore',label:'Ore di lavoro',type:'number',value:i.ore,half:true},
+    {name:'costo',label:'Costo (€)',type:'number',value:i.costo,half:true},
+    {name:'appezzamento_id',label:'Appezzamento',type:'select',options:appOpts(),value:i.appezzamento_id,empty:'Intero uliveto / piante scelte sotto'},
+    {name:'piante',label:'Piante specifiche (facoltativo)',type:'piante',value:sel}],
+    onSubmit: async v=>{
+      const { piante, ...rec } = v;
+      const saved = await save('interventi', rec, id);
+      if (id){ const { error } = await sb.from('intervento_piante').delete().eq('intervento_id', id); if (error) throw error; }
+      if (piante.length){ const { error } = await sb.from('intervento_piante').insert(piante.map(p=>({intervento_id:saved.id,pianta_id:p}))); if (error) throw error; }
+    },
+    onDelete: id&&(()=>remove('interventi',id)) });
+}
+
+function formRaccolta(id, piantaId){
+  const r = S.raccolte.find(x=>x.id===id) || {};
+  openForm({ title: id?'Modifica raccolta':'Nuova raccolta', fields:[
+    {name:'data',label:'Data',type:'date',required:true,value:r.data||today(),half:true},
+    {name:'kg_olive',label:'Kg di olive',type:'number',required:true,value:r.kg_olive,half:true},
+    {name:'pianta_id',label:'Pianta',type:'select',options:pianteOpts(),value:r.pianta_id||piantaId,empty:'— nessuna pianta specifica —'},
+    {name:'appezzamento_id',label:'Oppure appezzamento',type:'select',options:appOpts(),value:r.appezzamento_id,hint:'Se pesi per pianta avrai la classifica delle più produttive.'},
+    {name:'note',label:'Note',value:r.note}],
+    onSubmit: v=>{
+      const oggi = today();
+      const c = S.interventi.find(i=>i.tipo==='trattamento'&&i.giorni_carenza&&i.data<=v.data&&addDays(i.data,i.giorni_carenza)>v.data);
+      if (c && !confirm(`Attenzione: il trattamento "${c.prodotto||''}" del ${fdate(c.data)} ha carenza fino al ${fdate(addDays(c.data,c.giorni_carenza))}. Salvare comunque?`)) throw new Error('Salvataggio annullato');
+      return save('raccolte',v,id);
+    },
+    onDelete: id&&(()=>remove('raccolte',id)) });
+}
+
+function formMolitura(id){
+  const m = S.moliture.find(x=>x.id===id) || {};
+  openForm({ title: id?'Modifica molitura':'Nuova molitura', fields:[
+    {name:'data',label:'Data',type:'date',required:true,value:m.data||today(),half:true},
+    {name:'frantoio',label:'Frantoio',value:m.frantoio,half:true},
+    {name:'kg_olive',label:'Kg olive molite',type:'number',required:true,value:m.kg_olive},
+    {name:'litri_olio',label:'Litri di olio',type:'number',value:m.litri_olio,half:true},
+    {name:'kg_olio',label:'Kg di olio',type:'number',value:m.kg_olio,half:true,},
+    {name:'costo',label:'Costo molitura (€)',type:'number',value:m.costo,hint:'Basta litri o kg: la resa si calcola da sola (1 L ≈ 0,916 kg).'},
+    {name:'note',label:'Note',type:'textarea',value:m.note,ph:'es. acidità, sapore, contenitori'}],
+    onSubmit: v=>save('moliture',v,id), onDelete: id&&(()=>remove('moliture',id)) });
+}
+
+function formMovimento(id){
+  const m = S.movimenti.find(x=>x.id===id) || {};
+  const tipo = m.tipo || 'spesa';
+  openForm({ title: id?'Modifica movimento':'Nuova spesa / entrata', fields:[
+    {name:'tipo',label:'Tipo',type:'select',options:[['spesa','Spesa'],['entrata','Entrata']],value:tipo,empty:false,half:true},
+    {name:'data',label:'Data',type:'date',required:true,value:m.data||today(),half:true},
+    {name:'categoria',label:'Categoria',type:'select',required:true,options:[...new Set([...CAT_SPESA,...CAT_ENTRATA])],value:m.categoria,empty:false},
+    {name:'importo',label:'Importo (€)',type:'number',required:true,value:m.importo},
+    {name:'descrizione',label:'Descrizione',value:m.descrizione}],
+    onSubmit: v=>save('movimenti',v,id), onDelete: id&&(()=>remove('movimenti',id)) });
+  const t = $('[name=tipo]'), c = $('[name=categoria]');
+  const upd = () => { const cur=c.value; const opts = t.value==='spesa'?CAT_SPESA:CAT_ENTRATA; c.innerHTML = opts.map(o=>`<option ${o===cur?'selected':''}>${o}</option>`).join(''); };
+  t.onchange = upd; upd();
+}
+
+function openSettings(){
+  openSheet(`<h3>Impostazioni</h3>
+    <div class="card"><h2>Appezzamenti<span class="sp"></span><button class="btn sm sec" onclick="formAppezzamento()">+ Nuovo</button></h2>
+      ${S.appezzamenti.map(a=>`<div class="row tap" onclick="formAppezzamento('${a.id}')"><div class="main"><div class="t">${esc(a.nome)}</div>
+        <div class="s">${S.piante.filter(p=>p.appezzamento_id===a.id).length} piante${a.superficie_mq?' · '+num(a.superficie_mq,0)+' m²':''}</div></div><div class="muted">›</div></div>`).join('')||'<div class="empty">Nessun appezzamento.</div>'}</div>
+    <div class="card"><h2>Dati</h2>
+      <div class="row tap" onclick="esporta()"><div class="main"><div class="t">Esporta tutti i dati (JSON)</div><div class="s">Backup completo</div></div><div class="muted">↓</div></div>
+      <div class="row"><div class="main"><div class="t">Account</div><div class="s">${esc(S.user.email)}</div></div><button class="btn sm danger" onclick="logout()">Esci</button></div></div>`);
+}
+async function esporta(){
+  const json = JSON.stringify({esportato:new Date().toISOString(),appezzamenti:S.appezzamenti,piante:S.piante,interventi:S.interventi,raccolte:S.raccolte,moliture:S.moliture,movimenti:S.movimenti},null,2);
+  const filename = `uliveto-backup-${today()}.json`;
+  const dl = window.claude?.use ? await window.claude.use('downloads') : null;
+  if (dl) {
+    try { await dl.save({ filename, data: json }); toast('Backup salvato ✓'); }
+    catch(e){ if (e?.code !== 'declined') toast('Download non disponibile qui'); }
+    return;
+  }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json],{type:'application/json'})); a.download = filename; a.click();
+}
+async function logout(){ await sb.auth.signOut(); closeSheet(); }
+
+/* ===== Autenticazione ===== */
+let authMode = 'login';
+function renderAuth(){
+  $('#app').innerHTML = `<div class="auth"><div class="logo">🫒</div><h1>Il mio Uliveto</h1><p>Piante, lavori, raccolta, olio e conti in un solo posto.</p>
+    <form id="authf" class="card">
+      <label class="f"><span>Email</span><input name="email" type="email" required autocomplete="email"></label>
+      <label class="f"><span>Password</span><input name="password" type="password" required minlength="6" autocomplete="${authMode==='login'?'current-password':'new-password'}"></label>
+      <button class="btn block" type="submit">${authMode==='login'?'Accedi':'Crea account'}</button>
+    </form>
+    <button class="link" onclick="authMode=authMode==='login'?'signup':'login';renderAuth()">${authMode==='login'?'Prima volta? Crea un account':'Hai già un account? Accedi'}</button>
+    ${authMode==='login'?'<button class="link" style="font-weight:400;color:var(--muted)" onclick="resetPwd()">Password dimenticata?</button>':''}</div>`;
+  $('#authf').onsubmit = async e => {
+    e.preventDefault(); const fd = new FormData(e.target);
+    const creds = { email: fd.get('email'), password: fd.get('password') };
+    const { data, error } = authMode==='login' ? await sb.auth.signInWithPassword(creds) : await sb.auth.signUp({ ...creds, options:{ emailRedirectTo: APP_URL } });
+    if (error) return fail(error);
+    if (authMode==='signup' && !data.session) toast('Controlla la tua email per confermare l\'account, poi accedi.');
+  };
+}
+
+const APP_URL = location.origin + location.pathname;
+async function resetPwd(){
+  const email = ($('#authf [name=email]')?.value || '').trim();
+  if (!email) return toast('Scrivi prima la tua email nel campo sopra');
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: APP_URL });
+  if (error) return fail(error);
+  toast('Ti abbiamo inviato una mail per reimpostare la password');
+}
+function nuovaPassword(){
+  openForm({ title:'Imposta una nuova password', fields:[{name:'password',label:'Nuova password (almeno 6 caratteri)',type:'password',required:true}],
+    onSubmit: async v=>{ if ((v.password||'').length < 6) throw new Error('Almeno 6 caratteri'); const { error } = await sb.auth.updateUser({ password:v.password }); if (error) throw error; } });
+}
+
+sb.auth.onAuthStateChange(async (_e, session) => {
+  if (_e === 'PASSWORD_RECOVERY') setTimeout(nuovaPassword, 400);
+  const u = session?.user || null;
+  if (S._init && u?.id === S.user?.id) return;
+  S._init = true; S.user = u;
+  if (u) { $('#app').innerHTML = '<div class="empty" style="margin-top:30vh">Caricamento…</div>'; await refresh(); }
+  else render();
+});
+</script>
+</body>
+</html>
