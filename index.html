@@ -73,6 +73,7 @@ select.year{border:1px solid var(--line);background:var(--card);border-radius:10
 .empty{color:var(--muted);text-align:center;padding:18px 6px;font-size:14px}
 .warn{background:var(--gold-soft);border:1px solid transparent;color:var(--ink)}
 .warn h2{color:var(--gold)}
+.carenza{margin-top:6px;display:inline-block;font-size:12.5px;background:var(--card);color:var(--ink);border-radius:8px;padding:4px 9px}
 .bars{display:flex;align-items:flex-end;gap:6px;height:110px;padding-top:6px}
 .bars .b{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:3px;min-width:0}
 .bars .b i{display:block;width:100%;max-width:38px;background:var(--olive-2);border-radius:6px 6px 2px 2px;min-height:2px}
@@ -466,7 +467,9 @@ function viewHome(){
       <p style="margin:0 0 12px">Crea gli appezzamenti del tuo uliveto e poi aggiungi le piante (anche in blocco, es. da A-1 ad A-80).</p>
       <div class="actions" style="margin-top:0"><button class="btn sec" onclick="formAppezzamento()">+ Appezzamento</button><button class="btn" onclick="formBlocco()">+ Piante in blocco</button></div></div>`:''}
     ${carenze.length ? `<div class="card warn"><h2>⚠️ Tempi di carenza in corso</h2>
-      ${carenze.map(i=>`<div class="row"><div class="main"><div class="t">${esc(i.prodotto||'Trattamento')}</div><div class="s">${esc(targetLabel(i))} · trattato il ${fdate(i.data)}</div></div><div class="n">no raccolta fino al ${fdate(addDays(i.data,i.giorni_carenza))}</div></div>`).join('')}</div>`:''}
+      ${carenze.map(i=>{const fine=addDays(i.data,i.giorni_carenza), gg=Math.round((new Date(fine+'T00:00')-new Date(oggi+'T00:00'))/864e5);
+        return `<div class="row"><div class="main"><div class="t" style="white-space:normal">${esc(i.prodotto||'Trattamento')}</div><div class="s" style="white-space:normal">${esc(targetLabel(i))} · trattato il ${fdate(i.data)}</div>
+        <div class="carenza">🚫 Non raccogliere fino al <b>${fdate(fine)}</b>${gg>0?` (${gg} gg)`:' (ultimo giorno)'}</div></div></div>`}).join('')}</div>`:''}
     <div class="kpis">
       <div class="kpi"><div class="l">Olive raccolte</div><div class="v">${num(a.kgRacc,0)} kg</div>${delta(a.kgRacc,p.kgRacc,' kg')}</div>
       <div class="kpi"><div class="l">Olio prodotto</div><div class="v">${num(a.lt,0)} L</div>${delta(a.lt,p.lt,' L')}</div>
