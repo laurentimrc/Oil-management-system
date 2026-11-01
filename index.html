@@ -122,6 +122,13 @@ select.year{border:1px solid var(--line);background:var(--card);border-radius:10
 .sug button:first-child{border-top:0}
 .sug button span{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sug button:active{background:var(--olive-soft)}
+.gmaps{background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:10px 12px;margin:-4px 0 14px}
+.gm-titolo{font-size:13.5px;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.gm-riga{display:flex;gap:8px}
+.gm-riga input{flex:1;min-width:0;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 10px;font-size:14px}
+.gm-aiuto{margin-top:8px;font-size:12.5px;color:var(--muted)}
+.gm-aiuto summary{cursor:pointer;color:var(--olive);font-weight:600}
+.gm-aiuto ol{margin:6px 0 0;padding-left:18px;line-height:1.5}
 .addrbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-2px 0 12px;font-size:12.5px}
 .meteo-now{display:flex;align-items:center;gap:12px;margin-bottom:4px}
 .meteo-now .e{font-size:42px;line-height:1}
@@ -959,7 +966,19 @@ function formAppezzamento(id){
   const ind = $('#frm [name=indirizzo]');
   ind.closest('label').insertAdjacentHTML('afterend', `<div id="addrSug" class="sug"></div>
     <div class="addrbar"><span id="addrStato" class="muted">${a.lat!=null?'📍 Posizione del lotto salvata':'Scrivi la via: ti suggerisco gli indirizzi'}</span>
-    <button type="button" class="btn sm sec" onclick="lottoQui()">📍 Sono sul terreno</button></div>`);
+    <button type="button" class="btn sm sec" onclick="lottoQui()">📍 Sono sul terreno</button></div>
+    <div class="gmaps">
+      <div class="gm-titolo">🗺️ Hai già il punto su <b>Google Maps</b>?</div>
+      <div class="gm-riga"><input id="gmIn" placeholder="Incolla coordinate o link" autocomplete="off" inputmode="url">
+        <button type="button" class="btn sm" onclick="daGoogleMaps()">Usa</button></div>
+      <details class="gm-aiuto"><summary>Come copiarlo da Google Maps</summary>
+        <ol><li>Apri Google Maps e trova il tuo terreno (va bene la vista satellite).</li>
+        <li>Tieni premuto sul punto: compare una puntina rossa.</li>
+        <li>Tocca le coordinate in alto per copiarle, oppure <b>Condividi → Copia link</b>.</li>
+        <li>Torna qui e incolla.</li></ol></details>
+    </div>`);
+  $('#gmIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); daGoogleMaps(); } });
+  $('#gmIn').addEventListener('paste', () => setTimeout(daGoogleMaps, 50));
   let t; ind.addEventListener('input', () => { clearTimeout(t); t = setTimeout(cercaIndirizzo, 500); });
 }
 const NOMINATIM = 'https://nominatim.openstreetmap.org';
@@ -974,7 +993,49 @@ function setLotto(r){
   f.cap.value = ad.postcode || '';
   f.lat.value = (+r.lat).toFixed(7); f.lng.value = (+r.lon).toFixed(7);
   $('#addrSug').innerHTML = '';
-  $('#addrStato').innerHTML = `📍 Posizione trovata · <a href="https://www.openstreetmap.org/?mlat=${f.lat.value}&mlon=${f.lng.value}#map=17/${f.lat.value}/${f.lng.value}" target="_blank" rel="noopener">verifica ↗</a>`;
+  $('#addrStato').innerHTML = `📍 Posizione trovata · <a href="https://www.google.com/maps/search/?api=1&query=${f.lat.value},${f.lng.value}" target="_blank" rel="noopener">verifica su Google Maps ↗</a>`;
+}
+/* Coordinate da Google Maps: "41.56, 14.66", link lunghi (anche con !3d…!4d…) e link brevi maps.app.goo.gl */
+function coordDaTesto(t){
+  t = String(t || ''); try { t = decodeURIComponent(t); } catch(e){}
+  t = t.replace(/\s+/g, ' ').trim();
+  const ok = (la, lo) => { la = +la; lo = +lo; return isFinite(la) && isFinite(lo) && Math.abs(la) <= 90 && Math.abs(lo) <= 180 && !(la === 0 && lo === 0) ? { lat:la, lng:lo } : null; };
+  let m;
+  if ((m = t.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/))) return ok(m[1], m[2]);                 // puntina del luogo
+  if ((m = t.match(/[?&](?:q|query|ll|destination|center)=(-?\d+(?:\.\d+)?),\s*\+?(-?\d+(?:\.\d+)?)/))) return ok(m[1], m[2]);
+  if ((m = t.match(/\/(?:search|place|dir)\/(?:[^/]*\/)?(-?\d+(?:\.\d+)?),\s*\+?(-?\d+(?:\.\d+)?)/))) return ok(m[1], m[2]);
+  if ((m = t.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/))) return ok(m[1], m[2]);                     // centro della mappa
+  if ((m = t.match(/^(-?\d{1,2}(?:[.,]\d+)?)\s*[,; ]\s*(-?\d{1,3}(?:[.,]\d+)?)$/))) return ok(m[1].replace(',', '.'), m[2].replace(',', '.'));
+  if ((m = t.match(/(\d{1,2})°\s*(\d{1,2})'\s*([\d.]+)"?\s*([NS])\s*,?\s*(\d{1,3})°\s*(\d{1,2})'\s*([\d.]+)"?\s*([EOW])/i))) {  // 41°33'40.3"N 14°39'36.4"E
+    const g = (d, mi, se, h) => (+d + mi / 60 + se / 3600) * (/[SWO]/i.test(h) ? -1 : 1);
+    return ok(g(m[1], m[2], m[3], m[4]), g(m[5], m[6], m[7], m[8]));
+  }
+  return null;
+}
+async function daGoogleMaps(){
+  const inp = $('#gmIn'); if (!inp) return;
+  let t = inp.value.trim(); if (!t) return toast('Incolla le coordinate o il link di Google Maps');
+  let c = coordDaTesto(t);
+  if (!c && /^https:\/\/(maps\.app\.goo\.gl|goo\.gl)\//i.test(t)) {
+    $('#addrStato').textContent = 'Leggo il link…';
+    const { data, error } = await sb.functions.invoke('risolvi-link', { body:{ url:t } });
+    if (!error && data?.url) c = coordDaTesto(data.url);
+    if (!c) { $('#addrStato').textContent = ''; return toast('Non riesco a leggere questo link: copia direttamente le coordinate (tieni premuto sul punto in Google Maps)'); }
+  }
+  if (!c) return toast('Non trovo coordinate: incolla qualcosa come 41.5612, 14.6601 o un link di Google Maps');
+  const f = $('#frm');
+  // completa comune e provincia solo se mancano (dati OpenStreetMap)
+  let ad = {};
+  try { const r = await fetch(`${NOMINATIM}/reverse?format=jsonv2&addressdetails=1&accept-language=it&zoom=16&lat=${c.lat}&lon=${c.lng}`); ad = (await r.json()).address || {}; } catch(e){}
+  if (!f.indirizzo.value.trim() && viaDa(ad)) f.indirizzo.value = viaDa(ad);
+  if (!f.comune.value.trim() && comuneDa(ad)) f.comune.value = comuneDa(ad);
+  if (!f.provincia.value.trim() && provDa(ad)) f.provincia.value = provDa(ad);
+  if (!f.cap.value && ad.postcode) f.cap.value = ad.postcode;
+  f.lat.value = c.lat.toFixed(7); f.lng.value = c.lng.toFixed(7);
+  inp.value = '';
+  $('#addrSug').innerHTML = '';
+  $('#addrStato').innerHTML = `📍 Posizione presa da Google Maps · <a href="https://www.google.com/maps/search/?api=1&query=${f.lat.value},${f.lng.value}" target="_blank" rel="noopener">verifica ↗</a>`;
+  toast('Posizione del lotto impostata ✓');
 }
 async function cercaIndirizzo(){
   const f = $('#frm'); if (!f) return;
