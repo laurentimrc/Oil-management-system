@@ -6,3 +6,6 @@ create function auth.jwt() returns jsonb language sql stable as $$ select coales
 grant usage on schema auth to anon, authenticated; grant execute on all functions in schema auth to anon, authenticated;
 grant usage on schema public to anon, authenticated;
 alter default privileges in schema public grant all on tables to anon, authenticated;
+create schema if not exists extensions; create extension if not exists pgcrypto schema extensions;
+do $$ begin create role service_role nologin bypassrls; exception when others then null; end $$;
+grant usage on schema public to service_role; alter default privileges in schema public grant all on tables to service_role;

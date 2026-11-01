@@ -11,5 +11,6 @@ ruoli `anon` e `authenticated`).
 - `vendite.sql` — clienti, approvazione, ordini, disponibilità (27 controlli)
 - `ruoli.sql` — collaboratori: inviti, manager, agricoltore, revoca (31 controlli)
 - `manager_vendite.sql` — il manager gestisce il negozio del titolare (14 controlli)
+- `notifiche.sql` — promemoria, preferenze, dispositivi e coda delle notifiche (17 controlli; applicare prima anche `notifiche.sql` senza le righe `create extension`)
 
 Non eseguirli sul database di produzione: inseriscono utenti di prova.

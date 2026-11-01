@@ -10,6 +10,7 @@ Web app per gestire l'intero ciclo di un uliveto, **pianta per pianta**: lavori 
 - **Piante**: anagrafica di ogni albero (codice, varietà, anno d'impianto, stato, appezzamento, note), creazione in blocco (es. A-1 … A-80), scheda con produzione per anno e storico lavori.
 - **Appezzamenti**: via e località con suggerimenti automatici (OpenStreetMap), comune, provincia, foglio e particella catastale; posizione del lotto sulla mappa e link per raggiungerlo.
 - **Meteo**: condizioni attuali e previsioni a 7 giorni per ogni appezzamento (Open-Meteo), con avvisi su gelo, pioggia abbondante, giorni adatti ai trattamenti e possibile dilavamento dei trattamenti recenti; meteo anche nella scheda di ogni pianta.
+- **Promemoria e notifiche**: lavori da fare con data (anche come ripetizione automatica dopo N giorni); notifiche push sul telefono per meteo (gelo, pioggia forte, giorni adatti ai trattamenti), promemoria del giorno, nuovi clienti e ordini, lavori e raccolte registrati dai collaboratori; preferenze per categoria.
 - **Mappa**: vista satellite o stradale, piante colorate per stato o per produzione, posizionamento con GPS o toccando la mappa.
 - **Lavori**: potatura, concimazione, trattamenti, irrigazione, lavorazioni, sfalcio, con prodotto, dose, giorni di carenza, ore e costi; assegnabili a tutto l'uliveto, a un appezzamento o a singole piante.
 - **Raccolta e frantoio**: kg di olive per pianta o appezzamento, moliture con litri/kg di olio e calcolo automatico della resa.
@@ -25,9 +26,10 @@ Web app per gestire l'intero ciclo di un uliveto, **pianta per pianta**: lavori 
 - Frontend: un solo file `index.html` (HTML/CSS/JS senza build), [supabase-js](https://github.com/supabase/supabase-js) e [Leaflet](https://leafletjs.com/) da CDN.
 - Backend: [Supabase](https://supabase.com) (PostgreSQL + Auth), regione `eu-central-1` (Francoforte).
 - Sicurezza: Row Level Security su tutte le tabelle, ogni utente accede solo ai propri dati. La chiave nel codice è la chiave *publishable*, pensata per stare nel browser.
+- Notifiche: Web Push (service worker `sw.js`), Edge Function [`supabase/functions/notifiche`](supabase/functions/notifiche/index.ts) e job `pg_cron` (coda ogni minuto, promemoria e meteo ogni mattina). Le chiavi VAPID sono generate dalla funzione e restano nel database.
 - Hosting: GitHub Pages.
 
-Lo schema del database è in [`supabase/schema.sql`](supabase/schema.sql) (gestione dell'uliveto) [`supabase/collaboratori.sql`](supabase/collaboratori.sql) (accesso condiviso per ruolo) e [`supabase/vendite.sql`](supabase/vendite.sql) (vendita olio: i clienti scrivono solo tramite funzioni che verificano autorizzazione e disponibilità).
+Lo schema del database è in [`supabase/schema.sql`](supabase/schema.sql) (gestione dell'uliveto) [`supabase/collaboratori.sql`](supabase/collaboratori.sql) (accesso condiviso per ruolo), [`supabase/notifiche.sql`](supabase/notifiche.sql) (promemoria e notifiche) e [`supabase/vendite.sql`](supabase/vendite.sql) (vendita olio: i clienti scrivono solo tramite funzioni che verificano autorizzazione e disponibilità).
 
 ## Configurazione Supabase
 

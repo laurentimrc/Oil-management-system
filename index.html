@@ -265,6 +265,18 @@ nav.tabs button .ic{position:relative}
 .privacy{font-size:12px;color:var(--muted);background:var(--bg);border-radius:10px;padding:10px;margin:4px 0 10px;line-height:1.45}
 label.chk{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;margin-bottom:12px}
 label.chk input{margin-top:3px;width:18px;height:18px}
+/* promemoria e notifiche */
+.prom-data{min-width:54px;text-align:center;border-radius:10px;padding:5px 4px;background:var(--olive-soft);color:var(--olive);font-size:11px;font-weight:700;line-height:1.2}
+.prom-data b{display:block;font-size:17px}
+.prom-data.oggi{background:var(--gold-soft);color:var(--gold)}
+.prom-data.ritardo{background:var(--red-soft);color:var(--red)}
+.switch{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+.switch:first-of-type{border-top:0}
+.switch .main{flex:1}
+.switch input{appearance:none;-webkit-appearance:none;width:44px;height:26px;border-radius:99px;background:var(--line);position:relative;cursor:pointer;transition:background .2s;flex:0 0 auto}
+.switch input::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.switch input:checked{background:var(--olive)}
+.switch input:checked::after{transform:translateX(18px)}
 /* auth */
 .auth{max-width:380px;margin:12vh auto 0;padding:0 20px}
 .auth .logo{font-size:44px;text-align:center}
@@ -357,7 +369,7 @@ const eur = n => Number(n||0).toLocaleString('it-IT',{style:'currency',currency:
 const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
 const fdate = s => s ? new Date(s+'T00:00').toLocaleDateString('it-IT',{day:'numeric',month:'short',year:'numeric'}) : '';
 const inYear = (d, y=S.year) => d && d.slice(0,4) === String(y);
-const addDays = (s, n) => { const d=new Date(s+'T00:00'); d.setDate(d.getDate()+n); return d.toISOString().slice(0,10); };
+const addDays = (s, n) => { const d=new Date(s+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+n); return d.toISOString().slice(0,10); }; // in UTC: niente slittamenti di fuso
 const sum = (arr, f) => arr.reduce((a,x)=>a+(Number(f(x))||0),0);
 const appName = id => S.appezzamenti.find(a=>a.id===id)?.nome || '';
 const pianta = id => S.piante.find(p=>p.id===id);
@@ -374,10 +386,11 @@ async function loadAll(){
   const res = await Promise.all([
     q('appezzamenti','*','nome'), sb.from('piante').select('*').eq('user_id', own).order('codice'),
     q('interventi','*, intervento_piante(pianta_id)','data'), q('raccolte','*','data'),
-    q('moliture','*','data'), puo('soldi') ? q('movimenti','*','data') : Promise.resolve({ data:[] })
+    q('moliture','*','data'), puo('soldi') ? q('movimenti','*','data') : Promise.resolve({ data:[] }),
+    sb.from('promemoria').select('*').eq('user_id', own).eq('fatto', false).order('data')
   ]);
   const err = res.find(r=>r.error); if (err) throw err.error;
-  [S.appezzamenti,S.piante,S.interventi,S.raccolte,S.moliture,S.movimenti] = res.map(r=>r.data);
+  [S.appezzamenti,S.piante,S.interventi,S.raccolte,S.moliture,S.movimenti,S.promemoria] = res.map(r=>r.data);
   S.appezzamenti.sort((a,b)=>a.nome.localeCompare(b.nome));
   S.piante.sort((a,b)=>a.codice.localeCompare(b.codice,'it',{numeric:true}));
   await loadVendite();
@@ -385,12 +398,12 @@ async function loadAll(){
   scriviCache();
 }
 /* Copia locale dei dati: all'apertura l'app mostra subito l'ultima versione e intanto aggiorna */
-const CACHE_TAB = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti','negozi','formati','clienti','ordini','collaboratori'];
+const CACHE_TAB = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti','negozi','formati','clienti','ordini','collaboratori','promemoria'];
 const cacheKey = () => 'uliveto:dati:' + S.user?.id + ':' + (S.owner || S.user?.id);
 function scriviCache(){ try { localStorage.setItem(cacheKey(), JSON.stringify(Object.fromEntries(CACHE_TAB.map(t=>[t,S[t]])))); } catch(e){} }
 function leggiCache(){ try { const c = JSON.parse(localStorage.getItem(cacheKey()) || 'null'); return c && CACHE_TAB.every(t=>Array.isArray(c[t])) ? c : null; } catch(e){ return null; } }
 function svuotaCache(){ try { Object.keys(localStorage).filter(k=>k.startsWith('uliveto:dati:')).forEach(k=>localStorage.removeItem(k)); } catch(e){} }
-const TAB_PROPRIE = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti'];
+const TAB_PROPRIE = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti','promemoria'];
 async function save(table, values, id){
   if (!id && TAB_PROPRIE.includes(table) && values.user_id == null) values = { ...values, user_id: S.owner || S.user.id };
   const q = id ? sb.from(table).update(values).eq('id',id) : sb.from(table).insert(values);
@@ -514,6 +527,7 @@ function viewHome(){
       ${puo('soldi') ? `<div class="kpi"><div class="l">Costo per litro</div><div class="v">${a.lt?eur(a.spese/a.lt):'—'}</div><div class="d">spese ${eur(a.spese)}</div></div>`
         : `<div class="kpi"><div class="l">Lavori registrati</div><div class="v">${a.int.length}</div><div class="d">${num(a.ore)} ore</div></div>`}
     </div>
+    ${cardDaFare(7, 3)}
     <div class="card" id="meteoCard"><h2>🌤️ Meteo</h2><div class="empty">Carico le previsioni…</div></div>
     <div class="card"><h2>📅 ${MESI_L[m]}: cosa fare di solito</h2>
       <ul class="season">${STAGIONE[m].map(s=>`<li>${esc(s)}</li>`).join('')}</ul>
@@ -795,6 +809,8 @@ function stampaEtichette(ids){
   setTimeout(()=>window.print(), 150);
 }
 function apriDaLink(){
+  const t = location.hash.match(/^#tab=(home|piante|lavori|raccolta|vendite|conti)$/);
+  if (t && S.user && !modoCliente()) { history.replaceState(null, '', location.pathname + location.search); S.tab = t[1]; return render(); }
   const m = location.hash.match(/^#p=([0-9a-f-]{36})$/i);
   if (!m || !S.user) return;
   history.replaceState(null, '', location.pathname + location.search);
@@ -811,6 +827,7 @@ function viewLavori(){
     <div class="chips">${['tutti',...TIPI].map(t=>`<button class="chip ${S.filtroTipo===t?'on':''}" onclick="S.filtroTipo='${t}';viewLavori()">${t==='tutti'?'Tutti':(TIPO_IC[t]+' '+t)}</button>`).join('')}</div>
     <div class="kpis"><div class="kpi"><div class="l">Ore di lavoro ${S.year}</div><div class="v">${num(a.ore)}</div></div>
       ${puo('soldi') ? `<div class="kpi"><div class="l">Costo lavori ${S.year}</div><div class="v">${eur(sum(a.int,i=>i.costo))}</div></div>` : `<div class="kpi"><div class="l">Lavori ${S.year}</div><div class="v">${a.int.length}</div></div>`}</div>
+    ${cardDaFare()}
     <div class="card"><h2>${list.length} lavori nel ${S.year}</h2>${list.map(rowIntervento).join('')||'<div class="empty">Nessun lavoro. Usa + per registrarne uno.</div>'}</div>`;
 }
 
@@ -918,7 +935,7 @@ function fab(){
 }
 function quickAdd(){
   openSheet(`<h3>Aggiungi</h3><div class="card">
-    ${[['🛠️','Lavoro / trattamento','formIntervento()'],['🧺','Raccolta','formRaccolta()'],['🏭','Molitura','formMolitura()','struttura'],['💶','Spesa o entrata','formMovimento()','soldi'],['🌳','Pianta','formPianta()','struttura']]
+    ${[['🛠️','Lavoro / trattamento','formIntervento()'],['📌','Promemoria (lavoro da fare)','formPromemoria()'],['🧺','Raccolta','formRaccolta()'],['🏭','Molitura','formMolitura()','struttura'],['💶','Spesa o entrata','formMovimento()','soldi'],['🌳','Pianta','formPianta()','struttura']]
       .filter(x=>!x[3] || puo(x[3])).map(([ic,l,fn])=>`<div class="row tap" onclick="${fn}"><div style="font-size:22px">${ic}</div><div class="main"><div class="t">${l}</div></div><div class="muted">›</div></div>`).join('')}</div>`);
 }
 
@@ -1027,8 +1044,8 @@ function formBlocco(){
     }});
 }
 
-function formIntervento(id, preset){
-  const i = S.interventi.find(x=>x.id===id) || {};
+function formIntervento(id, preset, base){
+  const i = S.interventi.find(x=>x.id===id) || base || {};
   const sel = id ? (i.intervento_piante||[]).map(x=>x.pianta_id) : (preset||[]);
   openForm({ title: id?'Modifica lavoro':'Nuovo lavoro', fields:[
     {name:'tipo',label:'Tipo',type:'select',options:TIPI,value:i.tipo||'potatura',empty:false,half:true},
@@ -1041,10 +1058,14 @@ function formIntervento(id, preset){
     {name:'ore',label:'Ore di lavoro',type:'number',value:i.ore,half:true},
     puo('soldi') && {name:'costo',label:'Costo (€)',type:'number',value:i.costo,half:true},
     {name:'appezzamento_id',label:'Appezzamento',type:'select',options:appOpts(),value:i.appezzamento_id,empty:'Intero uliveto / piante scelte sotto'},
-    {name:'piante',label:'Piante specifiche (facoltativo)',type:'piante',value:sel}],
+    {name:'piante',label:'Piante specifiche (facoltativo)',type:'piante',value:sel},
+    !id && {name:'ripeti',label:'🔔 Ricordamelo di nuovo tra… (giorni, facoltativo)',type:'number',ph:'es. 15',hint:'Crea un promemoria con lo stesso lavoro: utile per i trattamenti da ripetere.'}],
     onSubmit: async v=>{
-      const { piante, ...rec } = v;
+      const { piante, ripeti, ...rec } = v;
       const saved = await save('interventi', rec, id);
+      if (base?._prom) { const { error } = await sb.from('promemoria').update({ fatto:true, fatto_at:new Date().toISOString(), intervento_id:saved.id }).eq('id', base._prom); if (error) throw error; }
+      if (ripeti > 0) await save('promemoria', { data: addDays(rec.data, Math.round(ripeti)), tipo: rec.tipo, prodotto: rec.prodotto,
+        titolo: (rec.descrizione || rec.tipo[0].toUpperCase() + rec.tipo.slice(1)) + (rec.prodotto ? ' · ' + rec.prodotto : ''), appezzamento_id: rec.appezzamento_id });
       if (id){ const { error } = await sb.from('intervento_piante').delete().eq('intervento_id', id); if (error) throw error; }
       if (piante.length){ const { error } = await sb.from('intervento_piante').insert(piante.map(p=>({intervento_id:saved.id,pianta_id:p,user_id:S.owner || S.user.id}))); if (error) throw error; }
     },
@@ -1097,6 +1118,7 @@ function formMovimento(id){
 }
 
 function openSettings(){
+  setTimeout(disegnaNotifiche, 0);
   const st = puo('struttura');
   openSheet(`<h3>Impostazioni</h3>
     ${cardUliveti()}
@@ -1105,6 +1127,7 @@ function openSettings(){
         <div class="s">${S.piante.filter(p=>p.appezzamento_id===a.id).length} piante${a.superficie_mq?' · '+num(a.superficie_mq,0)+' m²':''}${catastoLotto(a)?' · '+esc(catastoLotto(a)):''}</div>
         ${indirizzoLotto(a)?`<div class="s" style="white-space:normal">📍 ${esc(indirizzoLotto(a))}</div>`:''}</div>
         ${navigaLotto(a)?`<a class="btn sm sec" href="${navigaLotto(a)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Vai ↗</a>`:'<div class="muted">›</div>'}</div>`).join('')||'<div class="empty">Nessun appezzamento.</div>'}</div>
+    <div class="card" id="cardNotifiche"><h2>🔔 Notifiche</h2><div class="muted">Controllo…</div></div>
     ${puo('team') ? cardTeam() : ''}
     <div class="card"><h2>Dati</h2>
       <div class="row tap" onclick="closeSheet();apriGuida()"><div class="main"><div class="t">Guida dell'app</div><div class="s">Rivedi le funzioni principali</div></div><div class="muted">💡</div></div>
@@ -1592,6 +1615,132 @@ async function condividiInvito(id){
   if (navigator.share) { try { await navigator.share({ text:t }); } catch(e){} } else copiaInvito(id);
 }
 
+/* ===== Promemoria: lavori da fare ===== */
+function giorniDa(d){ return Math.round((new Date(d + 'T00:00') - new Date(today() + 'T00:00')) / 864e5); }
+function etichettaData(d){
+  const g = giorniDa(d), dt = new Date(d + 'T00:00');
+  if (g < 0) return { cl:'ritardo', top: g === -1 ? 'ieri' : `${-g} gg fa`, n: dt.getDate() };
+  if (g === 0) return { cl:'oggi', top:'oggi', n: dt.getDate() };
+  if (g === 1) return { cl:'', top:'domani', n: dt.getDate() };
+  return { cl:'', top: MESI[dt.getMonth()], n: dt.getDate() };
+}
+function rowPromemoria(p){
+  const e = etichettaData(p.data), dove = appName(p.appezzamento_id);
+  return `<div class="row tap" onclick="schedaPromemoria('${p.id}')"><div class="prom-data ${e.cl}">${e.top}<b>${e.n}</b></div>
+    <div class="main"><div class="t">${TIPO_IC[p.tipo] || '📌'} ${esc(p.titolo)}</div><div class="s">${[dove, p.prodotto].filter(Boolean).map(esc).join(' · ') || esc(p.tipo)}</div></div><div class="muted">›</div></div>`;
+}
+function cardDaFare(entroGiorni, max){
+  const tutti = (S.promemoria || []).filter(p => !p.fatto);
+  const lista = entroGiorni ? tutti.filter(p => giorniDa(p.data) <= entroGiorni).slice(0, max || 99) : tutti;
+  if (entroGiorni && !lista.length) return '';
+  const ritardo = tutti.filter(p => giorniDa(p.data) < 0).length;
+  return `<div class="card"><h2>📌 ${entroGiorni ? 'Prossimi lavori' : 'Da fare'}<span class="sp"></span>${ritardo ? `<span class="badge red">${ritardo} in ritardo</span>` : ''}
+      ${entroGiorni ? `<button class="btn sm sec" onclick="S.tab='lavori';render()">Tutti</button>` : `<button class="btn sm sec" onclick="formPromemoria()">+ Promemoria</button>`}</h2>
+    ${lista.map(rowPromemoria).join('') || '<div class="muted">Nessun lavoro in programma. Aggiungi un promemoria e ti avviseremo il giorno stesso.</div>'}</div>`;
+}
+function formPromemoria(id){
+  const p = (S.promemoria || []).find(x => x.id === id) || {};
+  openForm({ title: id ? 'Modifica promemoria' : 'Nuovo promemoria', fields:[
+    {name:'titolo',label:'Cosa fare',required:true,value:p.titolo,ph:'es. Secondo trattamento rameico'},
+    {name:'data',label:'Quando',type:'date',required:true,value:p.data || addDays(today(), 7),half:true},
+    {name:'tipo',label:'Tipo',type:'select',options:TIPI,value:p.tipo || 'trattamento',empty:false,half:true},
+    {name:'prodotto',label:'Prodotto',value:p.prodotto,ph:'facoltativo'},
+    {name:'appezzamento_id',label:'Appezzamento',type:'select',options:appOpts(),value:p.appezzamento_id,empty:'Intero uliveto'},
+    {name:'note',label:'Note',type:'textarea',value:p.note}],
+    extra:'<div class="hint" style="margin-top:-2px">Il giorno indicato, alle 7 del mattino, arriva una notifica a te e alla tua squadra.</div>',
+    onSubmit: v => save('promemoria', id ? { ...v, notificato_at: v.data !== p.data ? null : p.notificato_at } : v, id),
+    onDelete: id && (() => remove('promemoria', id)) });
+}
+function schedaPromemoria(id){
+  const p = (S.promemoria || []).find(x => x.id === id); if (!p) return;
+  const e = etichettaData(p.data);
+  openSheet(`<h3>${TIPO_IC[p.tipo] || '📌'} ${esc(p.titolo)}</h3>
+    <div class="card">
+      <div class="row"><div class="main">Quando</div><div class="n">${fdate(p.data)} ${e.cl ? `<span class="badge ${e.cl === 'ritardo' ? 'red' : 'gold'}">${e.top}</span>` : ''}</div></div>
+      <div class="row"><div class="main">Tipo</div><div class="n">${esc(p.tipo)}</div></div>
+      ${p.prodotto ? `<div class="row"><div class="main">Prodotto</div><div class="n">${esc(p.prodotto)}</div></div>` : ''}
+      <div class="row"><div class="main">Dove</div><div class="n">${esc(appName(p.appezzamento_id) || 'Intero uliveto')}</div></div>
+      ${p.note ? `<div class="row"><div class="main s" style="white-space:normal">${esc(p.note)}</div></div>` : ''}
+    </div>
+    <div class="actions"><button class="btn block" onclick="completaPromemoria('${id}')">✓ Fatto: registra il lavoro</button></div>
+    <div class="actions"><button class="btn sec" onclick="rimandaPromemoria('${id}',1)">Domani</button><button class="btn sec" onclick="rimandaPromemoria('${id}',7)">+1 settimana</button><button class="btn sec" onclick="formPromemoria('${id}')">Modifica</button></div>`);
+}
+function completaPromemoria(id){
+  const p = S.promemoria.find(x => x.id === id);
+  formIntervento(null, [], { _prom:id, tipo:p.tipo, data:today(), descrizione:p.titolo, prodotto:p.prodotto, appezzamento_id:p.appezzamento_id });
+}
+async function rimandaPromemoria(id, giorni){
+  const p = S.promemoria.find(x => x.id === id);
+  const nuova = addDays(giorniDa(p.data) < 0 ? today() : p.data, giorni);
+  const { error } = await sb.from('promemoria').update({ data:nuova, notificato_at:null }).eq('id', id);
+  if (error) return fail(error);
+  closeSheet(); await refresh(); toast('Rimandato al ' + fdate(nuova));
+}
+
+/* ===== Notifiche push ===== */
+const pushSupportate = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const iOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+let _sw = null;
+function registraSW(){
+  if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return Promise.resolve(null);
+  return _sw ||= navigator.serviceWorker.register('sw.js').catch(e => { console.warn('SW', e); _sw = null; return null; });
+}
+function b64ToBytes(b64){ const p = '='.repeat((4 - b64.length % 4) % 4); const raw = atob((b64 + p).replace(/-/g,'+').replace(/_/g,'/')); return Uint8Array.from(raw, c => c.charCodeAt(0)); }
+function nomeDispositivo(){ const u = navigator.userAgent; return (/iphone/i.test(u) ? 'iPhone' : /ipad/i.test(u) ? 'iPad' : /android/i.test(u) ? 'Android' : /mac/i.test(u) ? 'Mac' : /windows/i.test(u) ? 'Windows' : 'Browser') + ' · ' + (/edg\//i.test(u) ? 'Edge' : /chrome|crios/i.test(u) ? 'Chrome' : /firefox|fxios/i.test(u) ? 'Firefox' : /safari/i.test(u) ? 'Safari' : ''); }
+async function iscrizioneCorrente(){ const reg = await registraSW(); return reg ? reg.pushManager.getSubscription() : null; }
+async function disegnaNotifiche(){
+  const box = $('#cardNotifiche'); if (!box) return;
+  let corpo;
+  if (!pushSupportate()) corpo = iOS() && !standalone()
+    ? `<div class="muted">Su iPhone le notifiche funzionano solo con l'app aggiunta alla schermata Home: tocca <b>Condividi</b> ⬆︎ in Safari, poi <b>Aggiungi alla schermata Home</b>, e apri l'app da lì.</div>`
+    : `<div class="muted">Questo browser non supporta le notifiche. Prova con Chrome o Safari aggiornati.</div>`;
+  else if (Notification.permission === 'denied') corpo = `<div class="muted">Le notifiche sono bloccate per questo sito. Riattivale dalle impostazioni del browser (lucchetto accanto all'indirizzo → Notifiche → Consenti), poi torna qui.</div>`;
+  else {
+    const sub = await iscrizioneCorrente().catch(() => null);
+    corpo = sub ? `<div class="riepilogo" style="margin-top:0">✓ Attive su questo dispositivo</div>
+        <div class="actions" style="margin-top:0"><button class="btn sec" onclick="provaNotifica()">Invia una prova</button><button class="btn sec" onclick="disattivaNotifiche()">Disattiva qui</button></div>`
+      : `<div class="muted" style="margin-bottom:8px">Ricevi gli avvisi del tuo uliveto anche ad app chiusa.</div><button class="btn block" onclick="attivaNotifiche()">🔔 Attiva le notifiche su questo telefono</button>`;
+  }
+  const pr = (await sb.from('preferenze_notifiche').select('*').eq('user_id', S.user.id).maybeSingle()).data || { meteo:true, promemoria:true, vendite:true, squadra:true };
+  const voci = [['meteo','🌤️ Meteo','gelo, pioggia forte, giorni buoni per trattare'],['promemoria','📌 Promemoria','i lavori in programma, il giorno stesso'],
+    puo('soldi') && ['vendite','🛒 Vendite','nuovi clienti da approvare e nuovi ordini'], puo('team') && ['squadra','👥 Squadra','lavori e raccolte registrati dai collaboratori']].filter(Boolean);
+  if (!$('#cardNotifiche')) return;
+  $('#cardNotifiche').innerHTML = `<h2>🔔 Notifiche</h2>${corpo}
+    <div style="margin-top:10px">${voci.map(([k,t,d]) => `<label class="switch"><div class="main"><div style="font-weight:600">${t}</div><div class="muted">${d}</div></div>
+      <input type="checkbox" ${pr[k] !== false ? 'checked' : ''} onchange="salvaPrefNotifiche('${k}', this.checked)"></label>`).join('')}</div>`;
+}
+async function salvaPrefNotifiche(k, v){
+  const { error } = await sb.from('preferenze_notifiche').upsert({ user_id:S.user.id, [k]:v, updated_at:new Date().toISOString() });
+  if (error) return fail(error);
+  toast(v ? 'Attivate ✓' : 'Disattivate');
+}
+async function attivaNotifiche(){
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { toast('Permesso non concesso'); return disegnaNotifiche(); }
+    const reg = await registraSW(); if (!reg) throw new Error('Servizio notifiche non disponibile su questa pagina');
+    await navigator.serviceWorker.ready;
+    const { data: chiave, error } = await sb.rpc('chiave_push_pubblica'); if (error || !chiave) throw error || new Error('Chiave non disponibile');
+    const sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:b64ToBytes(chiave) });
+    const j = sub.toJSON();
+    const r = await sb.rpc('registra_push', { p_endpoint:j.endpoint, p_p256dh:j.keys.p256dh, p_auth:j.keys.auth, p_dispositivo:nomeDispositivo() });
+    if (r.error) throw r.error;
+    toast('Notifiche attivate ✓'); await disegnaNotifiche(); provaNotifica();
+  } catch(e) { fail(e); }
+}
+async function disattivaNotifiche(){
+  const sub = await iscrizioneCorrente();
+  if (sub) { await sb.from('push_iscrizioni').delete().eq('endpoint', sub.endpoint); await sub.unsubscribe(); }
+  toast('Notifiche disattivate su questo dispositivo'); disegnaNotifiche();
+}
+async function provaNotifica(){
+  const { data, error } = await sb.functions.invoke('notifiche', { body:{ azione:'prova' } });
+  if (error) return fail(error);
+  toast(data?.ok ? 'Notifica di prova inviata 🔔' : 'Nessun dispositivo raggiunto');
+}
+registraSW();
+
 /* ===== Guida iniziale ===== */
 /* Schermate della guida: [icona, titolo, testo, dove, permesso richiesto]. Testi diversi per titolare, manager e agricoltore. */
 function guidaSchermate(){
@@ -1612,6 +1761,8 @@ function guidaSchermate(){
     ['🧪','Lavori e trattamenti','Registra potature, concimazioni e trattamenti. Con i giorni di carenza l\'app avvisa finché non è il momento di raccogliere.','Lavori'],
     agr ? ['🧺','Raccolta','Registra i chili di olive raccolti, pianta per pianta o per appezzamento. Vedi anche le moliture e la resa in olio.','Raccolta']
         : ['🧺','Raccolta e frantoio','Pesa le olive pianta per pianta e registra la molitura: resa e costo al litro dell\'olio si calcolano da soli.','Raccolta'],
+    ['🔔','Avvisi sul telefono','Attiva le notifiche da ⚙︎: ti avvisiamo di gelate e piogge in arrivo, dei lavori in programma e, se gestisci le vendite, di nuovi clienti e ordini. Su iPhone aggiungi prima l\'app alla schermata Home.','⚙︎ → Notifiche'],
+    ['📌','Promemoria dei lavori','Programma i lavori da fare, come un trattamento da ripetere tra 15 giorni: il giorno stesso arriva l\'avviso a tutta la squadra.','Lavori → Da fare'],
     ['🌤️','Il meteo del terreno','Previsioni a 7 giorni dove si trova l\'appezzamento, con avvisi su gelate, piogge e giorni adatti ai trattamenti.','Annata'],
     ['🛒','Vendi l\'olio','Attiva il negozio e manda il link ai clienti: li autorizzi, loro prenotano, decidi il prezzo su ogni ordine e consegni a casa loro.','Vendite','soldi'],
     ['💶','I conti dell\'annata','Spese ed entrate per categoria, con il saldo dell\'anno: i costi di lavori e frantoio e gli incassi delle vendite entrano in automatico.','Conti','soldi'],
