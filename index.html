@@ -221,6 +221,68 @@ nav.tabs button.on .ic{animation:tab-pop .35s cubic-bezier(.3,1.6,.5,1)}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;animation-delay:0s!important;transition-duration:.01ms!important}
   .splash .branch{stroke-dashoffset:0}.splash .leaf{transform:none}.splash .olive,.splash .name{opacity:1}
 }
+/* vetrina */
+.vt{--acc:#4d5a2c;--acc-soft:#e8ecd6;margin-bottom:12px}
+.vt-hero{position:relative;border-radius:var(--r);overflow:hidden;min-height:210px;display:flex;align-items:flex-end;background:linear-gradient(135deg,var(--acc),color-mix(in srgb,var(--acc) 55%,#c9a227));background-size:cover;background-position:center;color:#fff;margin-bottom:12px}
+.vt-hero.mini{min-height:130px}
+.vt-hero.foto::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05) 30%,rgba(0,0,0,.65))}
+.vt-hero-in{position:relative;padding:18px 18px 16px}
+.vt-kicker{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.9}
+.vt-hero h1{font:600 30px/1.1 "Lora",Georgia,serif;margin:6px 0 0;letter-spacing:-.3px}
+.vt-hero p{margin:8px 0 0;font-size:14.5px;line-height:1.45;opacity:.95;color:#fff!important}
+.auth .vt{text-align:left}
+.vt-annata{display:flex;gap:12px;align-items:flex-start;background:var(--acc-soft);color:var(--ink);border-radius:var(--r);padding:12px 14px;margin-bottom:12px}
+.vt-annata>span{font-size:26px}.vt-annata b{color:var(--acc)}.vt-annata p{margin:2px 0 0;font-size:14px}
+.vt-sez{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.vt-sez h2{font:600 19px/1.2 "Lora",Georgia,serif;margin:0 0 8px;color:var(--acc)}
+.vt-testo{margin:0;font-size:14.5px;line-height:1.55;white-space:pre-line}
+.vt-gal{display:flex;gap:8px;overflow-x:auto;margin:0 0 12px;scroll-snap-type:x mandatory;scrollbar-width:none}
+.vt-gal img{height:150px;width:auto;max-width:80%;border-radius:12px;object-fit:cover;scroll-snap-align:start;flex:0 0 auto}
+.vt-prod{display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.vt-sez .vt-prod:first-of-type,.card h2+.vt-prod{border-top:0}
+.vt-prod img,.vt-ph{width:64px;height:64px;border-radius:12px;object-fit:cover;flex:0 0 auto;background:var(--acc-soft,var(--olive-soft));display:grid;place-items:center;font-size:28px}
+.vt-prod .main{flex:1;min-width:0}.vt-prod p{margin:4px 0 0;font-size:13px;color:var(--muted);line-height:1.4}
+.vt-disp{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;margin-bottom:12px;font-size:14px}
+.vt-wa{background:#1f8a4c!important;color:#fff!important;text-decoration:none;text-align:center;display:block;margin-bottom:12px}
+.vt-mini{height:120px;border-radius:12px;background:linear-gradient(135deg,var(--acc),color-mix(in srgb,var(--acc) 55%,#c9a227));background-size:cover;background-position:center;display:flex;align-items:flex-end;color:#fff;position:relative;overflow:hidden}
+.vt-mini::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,.55))}
+.vt-mini div{position:relative;padding:10px 12px}.vt-mini small{display:block;font-size:11px;opacity:.9}.vt-mini b{font:600 19px "Lora",Georgia,serif}
+.vt-cop-ed{height:140px;border-radius:12px;background:linear-gradient(135deg,var(--acc),color-mix(in srgb,var(--acc) 55%,#c9a227));background-size:cover;background-position:center;display:grid;place-items:center;color:#fff;font-size:13px}
+.swatch{display:flex;gap:10px;margin-top:8px}.swatch button{width:36px;height:36px;border-radius:50%;border:3px solid var(--card);box-shadow:0 0 0 1px var(--line);cursor:pointer}
+.swatch button.on{box-shadow:0 0 0 3px var(--gold)}
+.gal-ed{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.gal-ed>div{aspect-ratio:1;border-radius:10px;background-size:cover;background-position:center;position:relative}
+.gal-ed>div button{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:12px;cursor:pointer}
+.gal-add{aspect-ratio:1;border-radius:10px;border:2px dashed var(--line);background:none;color:var(--olive);font-size:24px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.gal-add span{font-size:11px;font-weight:600}
+.foto-formato{display:flex;align-items:center;gap:12px;margin:-2px 0 6px}
+.foto-formato>div{width:64px;height:64px;border-radius:12px;background:var(--olive-soft) center/cover;display:grid;place-items:center;font-size:28px}
+.anteprima-banner{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--gold-soft);border:0;font-size:13.5px}
+.auth.con-vetrina{max-width:560px;margin-top:20px}
+.auth.con-vetrina .logo{display:none}
+/* area clienti: bacheca e punti */
+.seg3 button{font-size:13.5px;padding:8px 4px;position:relative}
+.nb-in{position:static;display:inline-block;margin-left:4px;vertical-align:1px}
+.chip-punti{border:0;background:var(--gold-soft);color:var(--ink);font-weight:700;font-size:14px;border-radius:99px;padding:7px 12px;cursor:pointer}
+.annuncio{display:flex;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.annuncio.nuovo{border-color:var(--acc);box-shadow:0 0 0 2px var(--acc-soft)}
+.an-emoji{font-size:30px;line-height:1}
+.an-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}.an-top span{font-size:12px;color:var(--muted);white-space:nowrap}
+.annuncio p{margin:6px 0 0;font-size:14px;line-height:1.5;white-space:pre-line}
+.punti-card{--acc:#4d5a2c;--acc-soft:#e8ecd6;background:linear-gradient(140deg,var(--acc),color-mix(in srgb,var(--acc) 60%,#c9a227));color:#fff;border-radius:20px;padding:18px;margin-bottom:12px;box-shadow:0 12px 30px -14px rgba(0,0,0,.4)}
+.pc-top{display:flex;align-items:center;gap:14px}
+.pc-ic{width:64px;height:64px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center;font-size:36px;animation:g-float 3s ease-in-out infinite}
+.pc-liv{font:600 22px "Lora",Georgia,serif}.pc-num{font-size:14px;opacity:.95}.pc-num b{font-size:22px}
+.pc-bar{height:10px;border-radius:99px;background:rgba(255,255,255,.25);margin:16px 0 8px;overflow:hidden}
+.pc-bar i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#f6eccb,#c9a227);animation:pc-cresci 1.1s cubic-bezier(.2,.8,.3,1) both}
+@keyframes pc-cresci{from{width:0}}
+.pc-sotto{font-size:13.5px}
+.pc-stat{display:flex;gap:18px;margin-top:12px;font-size:12.5px;opacity:.9}
+.livello{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line);opacity:.55}
+.livello:first-of-type{border-top:0}.livello.preso{opacity:1}
+.lv-ic{font-size:26px}.lv-ok{color:var(--olive);font-weight:800}
+.lv-premio{font-size:13px;margin-top:3px;color:var(--ink)}
+.pt-guadagnati{display:inline-block;margin-top:6px;font-size:12.5px;font-weight:700;color:var(--gold);background:var(--gold-soft);border-radius:99px;padding:3px 10px}
 /* cosa c'è di nuovo */
 .nv-ov{position:fixed;inset:0;z-index:42;background:rgba(20,22,15,0);display:flex;align-items:flex-end;justify-content:center;transition:background .25s}
 .nv-ov.on{background:rgba(20,22,15,.45)}
@@ -312,6 +374,7 @@ label.chk input{margin-top:3px;width:18px;height:18px}
 .auth .logo{font-size:44px;text-align:center}
 .auth h1{text-align:center;margin:6px 0 4px}
 .auth p{text-align:center;color:var(--muted);margin:0 0 22px}
+.auth .vt p{text-align:left;margin:0;color:inherit}.auth .vt .vt-hero p{margin-top:8px}.auth .vt .vt-annata p,.auth .vt .vt-prod p{margin-top:4px}.auth .vt .vt-prod p{color:var(--muted)}
 .link{background:none;border:0;color:var(--olive);font-weight:600;cursor:pointer;padding:8px;width:100%}
 </style>
 </head>
@@ -428,7 +491,7 @@ async function loadAll(){
   scriviCache();
 }
 /* Copia locale dei dati: all'apertura l'app mostra subito l'ultima versione e intanto aggiorna */
-const CACHE_TAB = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti','negozi','formati','clienti','ordini','collaboratori','promemoria'];
+const CACHE_TAB = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti','negozi','formati','clienti','ordini','collaboratori','promemoria','annunci'];
 const cacheKey = () => 'uliveto:dati:' + S.user?.id + ':' + (S.owner || S.user?.id);
 function scriviCache(){ try { localStorage.setItem(cacheKey(), JSON.stringify(Object.fromEntries(CACHE_TAB.map(t=>[t,S[t]])))); } catch(e){} }
 function leggiCache(){ try { const c = JSON.parse(localStorage.getItem(cacheKey()) || 'null'); return c && CACHE_TAB.every(t=>Array.isArray(c[t])) ? c : null; } catch(e){ return null; } }
@@ -839,6 +902,8 @@ function stampaEtichette(ids){
   setTimeout(()=>window.print(), 150);
 }
 function apriDaLink(){
+  const hc = { '#ordini':'punti', '#prenota':'ordina', '#bacheca':'bacheca' }[location.hash];
+  if (hc && S.user && modoCliente()) { history.replaceState(null, '', location.pathname + location.search); C.vista = hc; if (C.negozio) caricaCliente().then(renderCliente, renderCliente); return; }
   const t = location.hash.match(/^#tab=(home|piante|lavori|raccolta|vendite|conti)$/);
   if (t && S.user && !modoCliente()) { history.replaceState(null, '', location.pathname + location.search); S.tab = t[1]; return render(); }
   const m = location.hash.match(/^#p=([0-9a-f-]{36})$/i);
@@ -1251,70 +1316,124 @@ function slugCliente(){
 function slugDa(t){ return (t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'uliveto'; }
 
 /* ===== Area clienti ===== */
-const C = { negozio:null, cliente:null, formati:[], ordini:[], disp:null, owner:false, vista:'ordina', qty:{} };
+const C = { negozio:null, pub:null, cliente:null, formati:[], ordini:[], annunci:[], disp:null, owner:false, vista:'ordina', qty:{} };
+
+/* ===== Vetrina: colori, livelli dei punti oliva, disegno ===== */
+const COLORI_VETRINA = { oliva:['#4d5a2c','#e8ecd6','Oliva'], oro:['#8a6a0c','#f6eccb','Oro'], terra:['#8a4b2a','#f4e1d6','Terra'],
+  mare:['#2f6176','#dcebf0','Mare'], lavanda:['#5e4a7a','#ebe4f3','Lavanda'], notte:['#2b2e22','#e3e0d2','Notte'] };
+const LIVELLI = [ { k:'germoglio', ic:'🌱', nome:'Germoglio', da:0 }, { k:'ramoscello', ic:'🌿', nome:'Ramoscello', da:100 },
+  { k:'oliva', ic:'🫒', nome:'Oliva', da:250 }, { k:'ulivo', ic:'🌳', nome:'Ulivo', da:500 }, { k:'secolare', ic:'🏛️', nome:'Ulivo secolare', da:1000 } ];
+// Punti oliva: 50 di benvenuto + per ogni ordine consegnato 20 punti e 10 per litro (calcolati dagli ordini, non modificabili dal cliente)
+const puntiOrdine = o => 20 + Math.round(litriOrdine(o) * 10);
+function puntiDa(cliente, ordini){
+  if (!cliente || !['approvato','bloccato'].includes(cliente.stato)) return null;
+  const cons = (ordini || []).filter(o => o.cliente_id === cliente.id && o.stato === 'consegnato');
+  const punti = 50 + sum(cons, puntiOrdine);
+  let i = LIVELLI.length - 1; while (i > 0 && punti < LIVELLI[i].da) i--;
+  const liv = LIVELLI[i], pros = LIVELLI[i + 1];
+  return { punti, ordini:cons.length, litri:sum(cons, litriOrdine), liv, pros, perc: pros ? (punti - liv.da) / (pros.da - liv.da) : 1, mancano: pros ? pros.da - punti : 0 };
+}
+const accento = v => { const c = COLORI_VETRINA[v?.colore] || COLORI_VETRINA.oliva; return `--acc:${c[0]};--acc-soft:${c[1]}`; };
+const numeroWa = t => { let d = String(t || '').replace(/\D/g, ''); if (d.startsWith('00')) d = d.slice(2); if (d.length === 10 && d.startsWith('3')) d = '39' + d; return d; };
+function htmlFormatoVetrina(f, extra = ''){
+  return `<div class="vt-prod">${f.foto ? `<img src="${esc(f.foto)}" alt="" loading="lazy">` : '<div class="vt-ph">🫒</div>'}
+    <div class="main"><b>${esc(f.nome)}</b><div class="muted">${num(f.litri, 2)} L${f.prezzo != null ? ' · ' + (extra ? 'circa ' : '') + eur(f.prezzo) : extra ? ' · prezzo da concordare' : ''}</div>
+    ${f.descrizione ? `<p>${esc(f.descrizione)}</p>` : ''}</div>${extra}</div>`;
+}
+function htmlVetrina(d, o = {}){
+  if (!d) return '';
+  const v = d.vetrina || {}, titolo = v.titolo || d.nome, sotto = v.sottotitolo || d.descrizione || '';
+  const wa = numeroWa(v.whatsapp);
+  return `<div class="vt" style="${accento(v)}">
+    <div class="vt-hero ${d.copertina ? 'foto' : ''} ${o.compatta ? 'mini' : ''}" ${d.copertina ? `style="background-image:url('${esc(d.copertina)}')"` : ''}>
+      <div class="vt-hero-in"><div class="vt-kicker">🫒 ${esc(d.nome)}</div><h1>${esc(titolo)}</h1>${sotto && !o.compatta ? `<p>${esc(sotto)}</p>` : ''}</div></div>
+    ${v.annata ? `<div class="vt-annata"><span>🫒</span><div><b>L'annata</b><p>${esc(v.annata)}</p></div></div>` : ''}
+    ${!o.compatta && v.storia ? `<div class="vt-sez"><h2>La nostra storia</h2><p class="vt-testo">${esc(v.storia)}</p></div>` : ''}
+    ${!o.compatta && (d.galleria || []).length ? `<div class="vt-gal">${d.galleria.map(u => `<img src="${esc(u)}" loading="lazy" alt="">`).join('')}</div>` : ''}
+    ${o.formati !== false && (d.formati || []).length ? `<div class="vt-sez"><h2>Il nostro olio</h2>${d.formati.map(f => htmlFormatoVetrina(f)).join('')}
+      ${(d.formati || []).every(f => f.prezzo == null) ? '<div class="muted" style="font-size:12.5px">I prezzi sono visibili dopo l\'autorizzazione del produttore.</div>' : ''}</div>` : ''}
+    ${!o.compatta && d.disponibili != null ? `<div class="vt-disp">${d.disponibili > 0 ? `Disponibili ancora <b>${num(d.disponibili)} litri</b>` : 'Olio esaurito per quest\'annata'}</div>` : ''}
+    ${!o.compatta && d.note_consegna ? `<div class="vt-sez"><h2>Consegna</h2><p class="vt-testo">🚚 ${esc(d.note_consegna)}</p></div>` : ''}
+    ${!o.compatta && wa.length >= 8 ? `<a class="btn block vt-wa" href="https://wa.me/${wa}" target="_blank" rel="noopener">💬 Scrivici su WhatsApp</a>` : ''}
+  </div>`;
+}
+
+/* ===== Area clienti ===== */
 async function avviaCliente(){
   const slug = slugCliente();
   try { if (slug) localStorage.setItem('uliveto:negozio', slug); } catch(e){}
-  C.negozio = null;
+  C.negozio = null; C.pub = null;
   if (slug) {
-    const { data, error } = await sb.rpc('negozio_pubblico', { p_slug: slug });
+    const { data, error } = await sb.rpc('vetrina_pubblica', { p_slug: slug });
     if (error) throw error;
-    C.negozio = data?.[0] || null;
+    C.pub = data || null;
+    C.negozio = data ? { id:data.id, nome:data.nome, descrizione:data.descrizione, attivo:data.attivo } : null;
   }
   if (C.negozio) await caricaCliente();
+  const h = { '#ordini':'punti', '#prenota':'ordina', '#bacheca':'bacheca' }[location.hash];
+  if (h) { C.vista = h; history.replaceState(null, '', location.pathname + location.search); }
   renderCliente();
+  if (C.negozio && C.cliente) liveCliente();
 }
 async function caricaCliente(){
   const n = C.negozio.id, uid = S.user.id;
-  const [cl, fo, or, ne, ge] = await Promise.all([
+  const [cl, fo, or, ne, ge, an] = await Promise.all([
     sb.from('clienti').select('*').eq('negozio_id', n).eq('user_id', uid).maybeSingle(),
     sb.from('formati').select('*').eq('negozio_id', n).eq('attivo', true).order('ordine').order('litri'),
     sb.from('ordini').select('*, ordine_righe(*)').eq('negozio_id', n).eq('user_id', uid).order('created_at', { ascending:false }),
     sb.from('negozi').select('owner_id, note_consegna, attivo').eq('id', n).maybeSingle(),
-    sb.rpc('e_gestore', { p_negozio: n })
+    sb.rpc('e_gestore', { p_negozio: n }),
+    sb.from('annunci').select('*').eq('negozio_id', n).order('created_at', { ascending:false }).limit(30)
   ]);
   for (const r of [cl, fo, or, ne]) if (r.error) throw r.error;
-  C.cliente = cl.data; C.formati = fo.data || []; C.ordini = or.data || [];
-  C.owner = ne.data?.owner_id === uid || ge.data === true; C.titolare = ne.data?.owner_id === uid; C.noteConsegna = ne.data?.note_consegna || '';
+  C.cliente = cl.data; C.formati = fo.data || []; C.ordini = or.data || []; C.annunci = an.data || [];
+  C.owner = ne.data?.owner_id === uid || ge.data === true; C.titolare = ne.data?.owner_id === uid; C.noteConsegna = ne.data?.note_consegna || C.pub?.note_consegna || '';
+  if (ne.data) C.negozio.attivo = ne.data.attivo;
   C.disp = null;
   if (C.cliente?.stato === 'approvato' || C.owner) { const d = await sb.rpc('disponibilita', { p_negozio: n }); if (!d.error) C.disp = d.data; }
 }
+const annunciVistiKey = () => 'uliveto:annunci:' + S.user?.id;
+function annunciNuovi(){ let t = ''; try { t = localStorage.getItem(annunciVistiKey()) || ''; } catch(e){} return C.annunci.filter(a => a.created_at > t).length; }
 function renderCliente(){
   hideSplash();
-  const n = C.negozio;
+  const n = C.negozio, p = puntiDa(C.cliente, C.ordini);
   $('#app').innerHTML = `
     <header><h1>🫒 <span>${esc(n?.nome || 'Prenota l\'olio')}</span></h1>
+      ${p ? `<button class="chip-punti" onclick="C.vista='punti';renderCliente()" title="I tuoi punti oliva">${p.liv.ic} ${p.punti}</button>` : ''}
       <button class="btn sm sec" onclick="logout()">Esci</button></header>
     <main id="view" class="enter"></main>`;
-  setTimeout(()=>$('main')?.classList.remove('enter'), 900);
+  setTimeout(() => $('main')?.classList.remove('enter'), 900);
   const v = $('#view');
   if (!n) { v.innerHTML = `<div class="card"><h2>🔎 Negozio non trovato</h2><p class="muted">Il link che hai aperto non corrisponde a nessun produttore. Controlla di averlo copiato per intero, oppure chiedilo di nuovo a chi te l'ha mandato.</p></div>`; return; }
-  if (C.owner) { v.innerHTML = `<div class="card"><h2>👀 ${C.titolare ? 'Questo è il tuo negozio' : 'Gestisci questo negozio'}</h2><p class="muted" style="margin-top:0">${C.titolare ? '' : 'Hai accesso come manager, quindi non devi chiedere l\'autorizzazione. '}Questo è il link che ricevono i clienti per prenotare. Per gestire richieste e ordini usa la sezione Vendite.</p>
-      <a class="btn block" style="display:block;text-align:center;text-decoration:none" href="${QR_BASE}">Torna alla gestione</a></div>`; return; }
+  if (C.owner) { v.innerHTML = `<div class="card anteprima-banner"><b>👀 Anteprima</b> · Così vede la vetrina chi apre il tuo link.
+      <a class="btn sm" style="margin-left:auto;text-decoration:none" href="${QR_BASE}">Torna alla gestione</a></div>${htmlVetrina(C.pub)}`; return; }
   const c = C.cliente;
-  if (!c) return formRichiestaCliente(v);
+  if (!c) { v.innerHTML = htmlVetrina(C.pub) + '<div id="cv"></div>'; return formRichiestaCliente($('#cv')); }
   if (c.stato === 'in_attesa') {
     v.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:46px">⏳</div><h2 style="justify-content:center">Richiesta inviata</h2>
-      <p class="muted">Il produttore deve autorizzarti prima che tu possa prenotare. Riapri questa pagina più tardi: appena sarai autorizzato vedrai il listino.</p>
+      <p class="muted">Il produttore deve autorizzarti prima che tu possa prenotare. Appena lo farà, questa pagina si aggiorna da sola e ricevi 50 punti oliva di benvenuto.</p>
       <button class="btn sec" onclick="caricaCliente().then(renderCliente)">Controlla di nuovo</button></div>
-      <div class="card"><h2>I tuoi dati</h2><div class="muted">${esc(c.nome)}${c.telefono?' · '+esc(c.telefono):''}<br>📍 ${esc(indCompleto(c))}</div>
+      ${cardNotificheCliente()}
+      ${htmlVetrina(C.pub)}
+      <div class="card"><h2>I tuoi dati</h2><div class="muted">${esc(c.nome)}${c.telefono ? ' · ' + esc(c.telefono) : ''}<br>📍 ${esc(indCompleto(c))}</div>
       <div class="actions"><button class="btn sec" onclick="formRichiestaCliente($('#view'))">Modifica i dati</button></div></div>`;
-    return;
+    statoNotificheCliente(); return;
   }
   if (c.stato !== 'approvato') {
     v.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:46px">🚫</div><h2 style="justify-content:center">Prenotazioni non disponibili</h2>
       <p class="muted">Al momento non puoi prenotare da questo produttore. Per informazioni contattalo direttamente.</p></div>`;
     return;
   }
-  const aperti = C.ordini.filter(o => !['consegnato','annullato'].includes(o.stato)).length;
-  v.innerHTML = `<div class="seg"><button class="${C.vista==='ordina'?'on':''}" onclick="C.vista='ordina';renderCliente()">🛒 Prenota</button>
-      <button class="${C.vista==='ordini'?'on':''}" onclick="C.vista='ordini';renderCliente()">📦 I miei ordini${aperti?` (${aperti})`:''}</button></div><div id="cv"></div>`;
-  C.vista === 'ordina' ? viewPrenota() : viewMieiOrdini();
+  const aperti = C.ordini.filter(o => !['consegnato','annullato'].includes(o.stato)).length, nuovi = annunciNuovi();
+  v.innerHTML = `<div class="seg seg3"><button class="${C.vista === 'ordina' ? 'on' : ''}" onclick="C.vista='ordina';renderCliente()">🛒 Prenota</button>
+      <button class="${C.vista === 'bacheca' ? 'on' : ''}" onclick="C.vista='bacheca';renderCliente()">📣 Bacheca${nuovi ? `<em class="nb nb-in">${nuovi}</em>` : ''}</button>
+      <button class="${C.vista === 'punti' ? 'on' : ''}" onclick="C.vista='punti';renderCliente()">🫒 Ordini${aperti ? ` (${aperti})` : ''}</button></div><div id="cv"></div>`;
+  ({ ordina:viewPrenota, bacheca:viewBacheca, punti:viewPunti }[C.vista] || viewPrenota)();
 }
 function formRichiestaCliente(v){
   const c = C.cliente || {};
   v.innerHTML = `<div class="card"><h2>👋 Chiedi di poter prenotare</h2>
-    <p class="muted" style="margin-top:0">${esc(C.negozio.descrizione || '')} Inserisci i tuoi dati: il produttore li userà per autorizzarti e per consegnarti l'olio.</p>
+    <p class="muted" style="margin-top:0">Inserisci i tuoi dati: il produttore li userà per autorizzarti e per consegnarti l'olio. Appena autorizzato ricevi <b>50 punti oliva</b> di benvenuto.</p>
     <form id="frmCli">
       <label class="f"><span>Nome e cognome</span><input name="nome" required value="${esc(c.nome || '')}" autocomplete="name"></label>
       <label class="f"><span>Telefono</span><input name="telefono" type="tel" value="${esc(c.telefono || '')}" autocomplete="tel"></label>
@@ -1324,7 +1443,7 @@ function formRichiestaCliente(v){
       <div class="grid2"><label class="f"><span>Provincia</span><input name="provincia" value="${esc(c.provincia || '')}" maxlength="2" placeholder="es. MI"></label>
         <label class="f"><span>Citofono, piano…</span><input name="note_indirizzo" value="${esc(c.note_indirizzo || '')}"></label></div>
       <div class="privacy"><b>Informativa privacy (sintesi).</b> I dati inseriti (nome, email, telefono, indirizzo) sono trattati dal produttore titolare di questo negozio al solo scopo di gestire le tue prenotazioni e consegnare l'olio. Non sono ceduti a terzi e sono conservati su server nell'Unione Europea. Puoi chiederne in ogni momento la modifica o la cancellazione contattando il produttore.</div>
-      <label class="chk"><input type="checkbox" name="privacy" required ${c.privacy_at?'checked':''}> Ho letto l'informativa e acconsento al trattamento dei miei dati per gestire le prenotazioni.</label>
+      <label class="chk"><input type="checkbox" name="privacy" required ${c.privacy_at ? 'checked' : ''}> Ho letto l'informativa e acconsento al trattamento dei miei dati per gestire le prenotazioni.</label>
       <button class="btn block" type="submit">${C.cliente ? 'Salva i dati' : 'Invia la richiesta'}</button>
     </form></div>`;
   $('#frmCli').onsubmit = async e => {
@@ -1332,25 +1451,26 @@ function formRichiestaCliente(v){
     const { error } = await sb.rpc('richiedi_accesso', { p_negozio:C.negozio.id, p_nome:f.get('nome'), p_telefono:f.get('telefono'), p_indirizzo:f.get('indirizzo'),
       p_comune:f.get('comune'), p_cap:f.get('cap'), p_provincia:f.get('provincia'), p_note_indirizzo:f.get('note_indirizzo') });
     if (error) { b.disabled = false; return fail(error); }
-    toast(C.cliente ? 'Dati aggiornati ✓' : 'Richiesta inviata ✓'); await caricaCliente(); renderCliente();
+    const primo = !C.cliente;
+    toast(primo ? 'Richiesta inviata ✓' : 'Dati aggiornati ✓'); await caricaCliente(); renderCliente(); if (primo) liveCliente();
   };
 }
 function viewPrenota(){
   const v = $('#cv'), c = C.cliente;
-  if (!C.negozio.attivo) { v.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:42px">🔒</div><h2 style="justify-content:center">Prenotazioni chiuse</h2><p class="muted">Il produttore ha chiuso le prenotazioni per ora. Riprova più avanti.</p></div>`; return; }
+  const fotoDi = f => ({ ...f, foto:f.foto_url });
+  if (!C.negozio.attivo) { v.innerHTML = htmlVetrina(C.pub, { compatta:true, formati:false }) + `<div class="card" style="text-align:center"><div style="font-size:42px">🔒</div><h2 style="justify-content:center">Prenotazioni chiuse</h2><p class="muted">Il produttore ha chiuso le prenotazioni per ora. Riprova più avanti: ti avviseremo dalla bacheca.</p></div>`; return; }
   if (!C.formati.length) { v.innerHTML = `<div class="card"><div class="empty">Il listino non è ancora pronto. Riprova più tardi.</div></div>`; return; }
   const litri = sum(C.formati, f => f.litri * (C.qty[f.id] || 0));
   const conPrezzo = C.formati.every(f => !(C.qty[f.id] > 0) || f.prezzo != null);
   const stima = sum(C.formati, f => (f.prezzo || 0) * (C.qty[f.id] || 0));
   const oltre = C.disp != null && litri > C.disp;
-  v.innerHTML = `
+  const guadagno = litri ? 20 + Math.round(litri * 10) : 0;
+  v.innerHTML = `${htmlVetrina(C.pub, { compatta:true, formati:false })}
     ${C.disp != null ? `<div class="card" style="padding:10px 14px"><b>${C.disp > 0 ? `Disponibili ancora ${num(C.disp)} litri` : 'Olio esaurito per quest\'annata'}</b></div>` : ''}
-    <div class="card"><h2>🫒 Olio dell'annata</h2>
-      ${C.formati.map(f => `<div class="prod"><div class="main"><div class="t" style="font-weight:600">${esc(f.nome)}</div>
-        <div class="s muted">${num(f.litri,2)} L · ${f.prezzo != null ? 'circa ' + eur(f.prezzo) : 'prezzo da concordare'}</div></div>
-        <div class="step"><button type="button" onclick="cQty('${f.id}',-1)" aria-label="Meno">−</button><b>${C.qty[f.id] || 0}</b><button type="button" onclick="cQty('${f.id}',1)" aria-label="Più">+</button></div></div>`).join('')}
+    <div class="card"><h2>🫒 Scegli il tuo olio</h2>
+      ${C.formati.map(f => htmlFormatoVetrina(fotoDi(f), `<div class="step"><button type="button" onclick="cQty('${f.id}',-1)" aria-label="Meno">−</button><b>${C.qty[f.id] || 0}</b><button type="button" onclick="cQty('${f.id}',1)" aria-label="Più">+</button></div>`)).join('')}
       ${litri ? `<div class="riepilogo">Totale: <b>${num(litri, 2)} litri</b>${conPrezzo && stima ? ` · indicativamente <b>${eur(stima)}</b>` : ''}
-        <div class="muted" style="font-size:12px;margin-top:3px">Il prezzo finale, comprese eventuali spese di consegna, te lo conferma il produttore.</div></div>` : ''}
+        <div class="muted" style="font-size:12px;margin-top:3px">Il prezzo finale, comprese eventuali spese di consegna, te lo conferma il produttore. Alla consegna guadagni <b>+${guadagno} punti oliva</b>.</div></div>` : ''}
       ${oltre ? `<div class="riepilogo" style="background:var(--red-soft);color:var(--red)">Hai superato la disponibilità di ${num(litri - C.disp)} litri.</div>` : ''}
     </div>
     <div class="card"><h2>🚚 Consegna</h2>
@@ -1371,21 +1491,58 @@ function viewPrenota(){
     const { error } = await sb.rpc('crea_ordine', { p_negozio:C.negozio.id, p_righe:righe, p_indirizzo:f.get('indirizzo'), p_comune:f.get('comune'),
       p_cap:f.get('cap'), p_provincia:f.get('provincia'), p_note_indirizzo:f.get('note_indirizzo'), p_data:f.get('data') || null, p_note:f.get('note') || null });
     if (error) { b.disabled = false; b.textContent = 'Invia la prenotazione'; return fail(error); }
-    C.qty = {}; C.vista = 'ordini'; toast('Prenotazione inviata ✓'); await caricaCliente(); renderCliente();
+    C.qty = {}; C.vista = 'punti'; toast('Prenotazione inviata ✓'); await caricaCliente(); renderCliente();
   };
 }
-function cQty(id, d){ C.qty[id] = Math.max(0, Math.min(200, (C.qty[id] || 0) + d)); const y = scrollY; viewPrenota(); scrollTo(0, y); }
-function viewMieiOrdini(){
+function cQty(id, d){ C.qty[id] = Math.max(0, Math.min(200, (C.qty[id] || 0) + d)); const y = scrollY; renderCliente(); scrollTo(0, y); }
+function viewBacheca(){
   const v = $('#cv');
-  if (!C.ordini.length) { v.innerHTML = `<div class="card"><div class="empty">Non hai ancora prenotazioni.</div></div>`; return; }
-  v.innerHTML = C.ordini.map(o => `<div class="ordcard">
-      <div class="top"><b>${fdate(o.created_at.slice(0,10))}</b>${badgeSt(o.stato, STATI_ORD)}</div>
+  let visti = ''; try { visti = localStorage.getItem(annunciVistiKey()) || ''; } catch(e){}
+  v.innerHTML = C.annunci.length ? C.annunci.map(a => `<div class="annuncio ${a.created_at > visti ? 'nuovo' : ''}" style="${accento(C.pub?.vetrina)}">
+      <div class="an-emoji">${esc(a.emoji)}</div><div class="main"><div class="an-top"><b>${esc(a.titolo)}</b><span>${quandoFa(a.created_at)}</span></div>
+      ${a.testo ? `<p>${esc(a.testo)}</p>` : ''}</div></div>`).join('')
+    : `<div class="card"><div class="empty">📣 Qui trovi le novità del produttore: raccolta, olio nuovo, giorni di consegna. Per ora non ci sono annunci.</div></div>`;
+  try { if (C.annunci[0]) localStorage.setItem(annunciVistiKey(), C.annunci[0].created_at); } catch(e){}
+}
+function quandoFa(ts){
+  const s = (Date.now() - new Date(ts)) / 1000;
+  return s < 90 ? 'adesso' : s < 3600 ? Math.round(s / 60) + ' min fa' : s < 86400 ? Math.round(s / 3600) + ' ore fa' : fdate(ts.slice(0, 10));
+}
+function viewPunti(){
+  const v = $('#cv'), p = puntiDa(C.cliente, C.ordini), premi = C.pub?.vetrina?.premi || {};
+  v.innerHTML = `<div class="punti-card" style="${accento(C.pub?.vetrina)}">
+      <div class="pc-top"><div class="pc-ic">${p.liv.ic}</div><div><div class="pc-liv">${p.liv.nome}</div><div class="pc-num"><b data-n="${p.punti}">${p.punti}</b> punti oliva</div></div></div>
+      <div class="pc-bar"><i style="width:${Math.round(p.perc * 100)}%"></i></div>
+      <div class="pc-sotto">${p.pros ? `Ancora <b>${p.mancano}</b> punti per diventare <b>${p.pros.ic} ${p.pros.nome}</b>` : 'Hai raggiunto il livello più alto. Grazie!'}</div>
+      <div class="pc-stat"><span><b>${p.ordini}</b> ${p.ordini === 1 ? 'ordine consegnato' : 'ordini consegnati'}</span><span><b>${num(p.litri, 1)}</b> litri</span></div>
+    </div>
+    <div class="card"><h2>🏅 I livelli</h2>
+      ${LIVELLI.map(l => `<div class="livello ${p.punti >= l.da ? 'preso' : ''}"><span class="lv-ic">${l.ic}</span><div class="main"><b>${l.nome}</b> <span class="muted">da ${l.da} punti</span>
+        ${premi[l.k] ? `<div class="lv-premio">🎁 ${esc(premi[l.k])}</div>` : ''}</div>${p.punti >= l.da ? '<span class="lv-ok">✓</span>' : ''}</div>`).join('')}
+      <div class="muted" style="font-size:12px;margin-top:8px">Come si guadagnano: 50 punti di benvenuto, poi per ogni ordine consegnato 20 punti più 10 per ogni litro.</div></div>
+    ${cardNotificheCliente()}
+    <div class="card"><h2>📦 I miei ordini</h2>${C.ordini.length ? C.ordini.map(o => `<div class="ordcard">
+      <div class="top"><b>${fdate(o.created_at.slice(0, 10))}</b>${badgeSt(o.stato, STATI_ORD)}</div>
       ${(o.ordine_righe || []).map(r => `<div class="muted" style="font-size:13.5px">${r.quantita} × ${esc(r.nome)}${r.prezzo_unitario != null ? ' · ' + eur(r.prezzo_unitario) + ' cad.' : ''}</div>`).join('')}
       <div style="margin-top:6px;font-size:14px">${o.totale != null ? `Totale confermato: <b>${eur(o.totale)}</b>${o.spese_consegna ? ` (consegna ${eur(o.spese_consegna)})` : ''}` : '<span class="muted">Prezzo in attesa di conferma</span>'}</div>
+      ${o.stato === 'consegnato' ? `<div class="pt-guadagnati">+${puntiOrdine(o)} punti oliva</div>` : ''}
       <div class="muted" style="font-size:12.5px;margin-top:4px">🚚 ${esc(indCompleto(o))}${o.data_preferita ? ' · preferibilmente il ' + fdate(o.data_preferita) : ''}</div>
       ${o.nota_gestore ? `<div class="riepilogo" style="margin-bottom:0">💬 ${esc(o.nota_gestore)}</div>` : ''}
       ${o.stato === 'richiesta' ? `<div class="actions"><button class="btn danger sm" onclick="annullaOrdineCliente('${o.id}')">Annulla la prenotazione</button></div>` : ''}
-    </div>`).join('') + `<div class="actions"><button class="btn sec" onclick="formRichiestaCliente($('#view'))">I miei dati di consegna</button></div>`;
+    </div>`).join('') : '<div class="empty">Non hai ancora prenotazioni.</div>'}</div>
+    <div class="actions"><button class="btn sec" onclick="formRichiestaCliente($('#view'))">I miei dati di consegna</button></div>`;
+  statoNotificheCliente();
+}
+function cardNotificheCliente(){
+  return `<div class="card" id="notiCli"><h2>🔔 Avvisami sul telefono</h2><div class="muted" style="margin-bottom:8px">Ricevi subito conferme, consegne e annunci del produttore.</div>
+    <button class="btn sec block" onclick="attivaNotifiche().then(statoNotificheCliente)">Attiva le notifiche</button></div>`;
+}
+async function statoNotificheCliente(){
+  const box = $('#notiCli'); if (!box) return;
+  if (!pushSupportate()) { box.querySelector('.btn')?.remove(); box.querySelector('.muted').innerHTML = iOS() && !standalone()
+      ? 'Su iPhone aggiungi prima questa pagina alla schermata Home (Condividi → Aggiungi alla schermata Home) e aprila da lì.' : 'Questo browser non supporta le notifiche.'; return; }
+  const sub = await iscrizioneCorrente().catch(() => null);
+  if (sub && $('#notiCli')) $('#notiCli').innerHTML = '<h2>🔔 Notifiche attive</h2><div class="muted">Riceverai qui conferme, consegne e annunci del produttore.</div>';
 }
 async function annullaOrdineCliente(id){
   if (!confirm('Vuoi annullare questa prenotazione?')) return;
@@ -1393,22 +1550,155 @@ async function annullaOrdineCliente(id){
   if (error) return fail(error);
   toast('Prenotazione annullata'); await caricaCliente(); renderCliente();
 }
+/* Tempo reale per il cliente: ordini, autorizzazione e annunci si aggiornano da soli */
+const MSG_STATO = { confermato:'✅ Il tuo ordine è stato confermato', in_consegna:'🚚 Il tuo olio è in consegna', consegnato:'🫒 Consegnato! Hai guadagnato punti oliva', annullato:'Il tuo ordine è stato annullato' };
+function liveCliente(){
+  if (C._live || !sb.channel) return;
+  const aggiorna = async (msg, ridisegna = true) => {
+    if (msg) toast(msg);
+    const prima = puntiDa(C.cliente, C.ordini)?.liv.k;
+    await caricaCliente().catch(() => {});
+    const dopo = puntiDa(C.cliente, C.ordini);
+    if (prima && dopo && dopo.liv.k !== prima) setTimeout(() => toast(`🎉 Nuovo livello: ${dopo.liv.ic} ${dopo.liv.nome}!`), 1800);
+    // mentre si compila la prenotazione non si ridisegna il modulo: si aggiornano solo le schede
+    if (ridisegna && !(C.vista === 'ordina' && document.activeElement?.closest('#frmOrd'))) { const y = scrollY; renderCliente(); scrollTo(0, y); }
+  };
+  C._live = sb.channel('cliente-' + S.user.id)
+    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'ordini', filter:`user_id=eq.${S.user.id}` }, p => {
+      const prima = C.ordini.find(o => o.id === p.new.id)?.stato; aggiorna(prima !== p.new.stato ? MSG_STATO[p.new.stato] : null); })
+    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'clienti', filter:`user_id=eq.${S.user.id}` }, p => aggiorna(p.new.stato === 'approvato' ? '🎉 Sei stato autorizzato: ora puoi prenotare!' : null))
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'annunci', filter:`negozio_id=eq.${C.negozio.id}` }, p => aggiorna('📣 ' + p.new.titolo))
+    .subscribe();
+}
+
+/* ===== Vetrina, bacheca e punti: parte del gestore ===== */
+async function caricaFoto(file){
+  if (!file) return null;
+  if (!/^image\//.test(file.type)) throw new Error('Scegli un\'immagine (JPG o PNG)');
+  const bmp = await createImageBitmap(file);
+  const k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+  const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+  cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+  const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.82));
+  const path = `${negozio().id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`;
+  const { error } = await sb.storage.from('vetrine').upload(path, blob, { contentType:'image/jpeg', cacheControl:'31536000', upsert:false });
+  if (error) throw error;
+  return sb.storage.from('vetrine').getPublicUrl(path).data.publicUrl;
+}
+function scegliFoto(cb, multipla){
+  const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; if (multipla) i.multiple = true;
+  i.onchange = async () => {
+    const files = [...i.files]; if (!files.length) return;
+    toast(files.length > 1 ? `Carico ${files.length} foto…` : 'Carico la foto…');
+    try { for (const f of files) cb(await caricaFoto(f)); toast('Foto caricata ✓'); } catch(e){ fail(e); }
+  };
+  i.click();
+}
+let VT = null;
+function formVetrina(){
+  const n = negozio();
+  VT = { vetrina: JSON.parse(JSON.stringify(n.vetrina || {})), copertina: n.copertina_url || null, galleria: [...(n.galleria || [])] };
+  VT.vetrina.premi ||= {};
+  disegnaFormVetrina();
+}
+function disegnaFormVetrina(){
+  const v = VT.vetrina, n = negozio();
+  const campo = (k, lab, ph, area) => `<label class="f"><span>${lab}</span>${area
+    ? `<textarea oninput="VT.vetrina.${k}=this.value" placeholder="${esc(ph)}">${esc(v[k] || '')}</textarea>`
+    : `<input value="${esc(v[k] || '')}" oninput="VT.vetrina.${k}=this.value" placeholder="${esc(ph)}">`}</label>`;
+  const sw = (k, lab, def) => `<label class="switch"><div class="main"><div style="font-weight:600">${lab}</div></div>
+    <input type="checkbox" ${(v[k] ?? def) ? 'checked' : ''} onchange="VT.vetrina.${k}=this.checked"></label>`;
+  openSheet(`<h3>🎨 Personalizza la vetrina</h3>
+    <div class="muted" style="margin:-6px 0 12px">È la pagina che vede chi apre il tuo link, anche prima di essere autorizzato.</div>
+    <div class="card"><h2>Copertina</h2>
+      <div class="vt-cop-ed" style="${accento(v)};${VT.copertina ? `background-image:url('${esc(VT.copertina)}')` : ''}">${VT.copertina ? '' : '<span>Nessuna foto: verrà usato il colore scelto</span>'}</div>
+      <div class="actions" style="margin-top:8px"><button class="btn sec sm" onclick="scegliFoto(u=>{VT.copertina=u;disegnaFormVetrina()})">📷 ${VT.copertina ? 'Cambia foto' : 'Scegli foto'}</button>
+        ${VT.copertina ? '<button class="btn danger sm" onclick="VT.copertina=null;disegnaFormVetrina()">Rimuovi</button>' : ''}</div>
+      <div style="margin-top:12px;font-weight:600;font-size:13px">Colore</div>
+      <div class="swatch">${Object.entries(COLORI_VETRINA).map(([k, c]) => `<button class="${(v.colore || 'oliva') === k ? 'on' : ''}" style="background:${c[0]}" title="${c[2]}" aria-label="${c[2]}" onclick="VT.vetrina.colore='${k}';disegnaFormVetrina()"></button>`).join('')}</div>
+    </div>
+    <div class="card"><h2>Testi</h2>
+      ${campo('titolo', 'Titolo', n.nome)}
+      ${campo('sottotitolo', 'Sottotitolo', n.descrizione || 'es. Extravergine raccolto a mano in Molise')}
+      ${campo('annata', 'L\'annata in breve', 'es. Raccolta 2026: Leccino e Frantoio, acidità 0,2%')}
+      ${campo('storia', 'La vostra storia', 'es. Curiamo questi ulivi dal 1950, tre generazioni di famiglia…', true)}
+      ${campo('whatsapp', 'Numero WhatsApp (facoltativo)', 'es. 333 1234567')}
+    </div>
+    <div class="card"><h2>Galleria</h2>
+      <div class="gal-ed">${VT.galleria.map((u, i) => `<div style="background-image:url('${esc(u)}')"><button onclick="VT.galleria.splice(${i},1);disegnaFormVetrina()" aria-label="Rimuovi">✕</button></div>`).join('')}
+        ${VT.galleria.length < 8 ? `<button class="gal-add" onclick="scegliFoto(u=>{if(VT.galleria.length<8)VT.galleria.push(u);disegnaFormVetrina()},true)">＋<span>Aggiungi</span></button>` : ''}</div>
+      <div class="muted" style="font-size:12px;margin-top:6px">Fino a 8 foto: gli ulivi, la raccolta, il frantoio, le bottiglie.</div></div>
+    <div class="card"><h2>Cosa mostrare</h2>
+      ${sw('mostra_disponibilita', 'Litri ancora disponibili', true)}
+      ${sw('prezzi_pubblici', 'Prezzi anche a chi non è ancora autorizzato', false)}</div>
+    <div class="card"><h2>🎁 Premi dei punti oliva</h2>
+      <div class="muted" style="margin:-4px 0 8px;font-size:13px">I clienti accumulano punti con gli ordini consegnati. Scrivi cosa ricevono a ogni livello (facoltativo).</div>
+      ${LIVELLI.slice(1).map(l => `<label class="f"><span>${l.ic} ${l.nome} · da ${l.da} punti</span><input value="${esc(v.premi[l.k] || '')}" oninput="VT.vetrina.premi['${l.k}']=this.value" placeholder="${{ ramoscello:'es. sconto 5% sul prossimo ordine', oliva:'es. consegna gratuita', ulivo:'es. una bottiglia da 0,5 L in omaggio', secolare:'es. visita all\'uliveto e degustazione' }[l.k]}"></label>`).join('')}</div>
+    <div class="actions"><button class="btn sec" onclick="anteprimaVetrina(true)">👀 Anteprima</button><button class="btn" onclick="salvaVetrina()">Salva</button></div>`);
+}
+function datiVetrinaCorrenti(){
+  const n = negozio();
+  return { id:n.id, nome:n.nome, descrizione:n.descrizione, attivo:n.attivo, note_consegna:n.note_consegna,
+    vetrina: VT ? VT.vetrina : n.vetrina || {}, copertina: VT ? VT.copertina : n.copertina_url, galleria: VT ? VT.galleria : n.galleria || [],
+    formati: S.formati.filter(f => f.attivo).map(f => ({ ...f, foto:f.foto_url, prezzo: (VT ? VT.vetrina : n.vetrina || {}).prezzi_pubblici ? f.prezzo : null })),
+    disponibili: ((VT ? VT.vetrina : n.vetrina || {}).mostra_disponibilita ?? true) && n.litri_in_vendita != null ? n.litri_in_vendita - sum(S.ordini.filter(o => o.stato !== 'annullato'), litriOrdine) : null };
+}
+function anteprimaVetrina(daEditor){
+  const d = datiVetrinaCorrenti();
+  openSheet(`<div class="anteprima-banner card"><b>👀 Anteprima</b> · Così ti vede chi apre il link${daEditor ? ' (modifiche non ancora salvate)' : ''}</div>
+    ${htmlVetrina(d)}
+    <div class="actions">${daEditor ? '<button class="btn sec" onclick="disegnaFormVetrina()">← Torna a modificare</button><button class="btn" onclick="salvaVetrina()">Salva</button>' : '<button class="btn block" onclick="formVetrina()">🎨 Personalizza</button>'}</div>`);
+}
+async function salvaVetrina(){
+  const v = { ...VT.vetrina };
+  Object.keys(v).forEach(k => { if (typeof v[k] === 'string') v[k] = v[k].trim(); if (v[k] === '') delete v[k]; });
+  v.premi = Object.fromEntries(Object.entries(VT.vetrina.premi || {}).map(([k, t]) => [k, (t || '').trim()]).filter(([, t]) => t));
+  const { error } = await sb.from('negozi').update({ vetrina:v, copertina_url:VT.copertina, galleria:VT.galleria }).eq('id', negozio().id);
+  if (error) return fail(error);
+  VT = null; closeSheet(); await refresh(); toast('Vetrina aggiornata ✓');
+}
+const EMOJI_ANNUNCI = ['📣','🫒','🧺','🏭','🚚','🎉','🌤️','🎁'];
+function formAnnuncio(id){
+  const a = (S.annunci || []).find(x => x.id === id) || {};
+  openForm({ title: id ? 'Modifica annuncio' : 'Nuovo annuncio in bacheca', fields:[
+    {name:'emoji',label:'Icona',type:'select',options:EMOJI_ANNUNCI,value:a.emoji || '📣',empty:false},
+    {name:'titolo',label:'Titolo',required:true,value:a.titolo,ph:'es. Olio nuovo pronto!'},
+    {name:'testo',label:'Messaggio',type:'textarea',value:a.testo,ph:'es. La raccolta 2026 è finita: da sabato consegniamo le prime latte.'}],
+    extra: id ? '' : '<div class="hint" style="margin-top:-2px">I clienti autorizzati lo vedono subito in bacheca e ricevono una notifica sul telefono.</div>',
+    onSubmit: v => id ? save('annunci', v, id) : save('annunci', { ...v, negozio_id:negozio().id }),
+    onDelete: id && (() => remove('annunci', id)) });
+}
+/* Tempo reale per il gestore: nuovi clienti e ordini arrivano senza ricaricare */
+function liveGestore(){
+  const n = negozio();
+  if (!n || !puo('soldi') || !sb.channel || S._liveNeg === n.id) return;
+  if (S._live) { try { sb.removeChannel(S._live); } catch(e){} }
+  S._liveNeg = n.id;
+  let t; const aggiorna = msg => { if (msg) toast(msg); clearTimeout(t); t = setTimeout(() => refresh(), 400); };
+  S._live = sb.channel('negozio-' + n.id)
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'ordini', filter:`negozio_id=eq.${n.id}` }, () => aggiorna('📦 Nuovo ordine ricevuto'))
+    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'ordini', filter:`negozio_id=eq.${n.id}` }, p => aggiorna(p.new.stato === 'annullato' ? 'Un cliente ha annullato un ordine' : null))
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'clienti', filter:`negozio_id=eq.${n.id}` }, () => aggiorna('🙋 Nuova richiesta di accesso'))
+    .subscribe();
+}
 
 /* ===== Vendite: parte del gestore ===== */
 async function loadVendite(){
-  if (!puo('soldi')) { S.negozi = []; S.formati = []; S.clienti = []; S.ordini = []; return; }
+  if (!puo('soldi')) { S.negozi = []; S.formati = []; S.clienti = []; S.ordini = []; S.annunci = []; return; }
   const ne = await sb.from('negozi').select('*').eq('owner_id', S.owner || S.user.id);
   if (ne.error) throw ne.error;
   S.negozi = ne.data || [];
   const n = S.negozi[0];
-  if (!n) { S.formati = []; S.clienti = []; S.ordini = []; return; }
-  const [fo, cl, or] = await Promise.all([
+  if (!n) { S.formati = []; S.clienti = []; S.ordini = []; S.annunci = []; return; }
+  const [fo, cl, or, an] = await Promise.all([
     sb.from('formati').select('*').eq('negozio_id', n.id).order('ordine').order('litri'),
     sb.from('clienti').select('*').eq('negozio_id', n.id).order('created_at', { ascending:false }),
-    sb.from('ordini').select('*, ordine_righe(*)').eq('negozio_id', n.id).order('created_at', { ascending:false })
+    sb.from('ordini').select('*, ordine_righe(*)').eq('negozio_id', n.id).order('created_at', { ascending:false }),
+    sb.from('annunci').select('*').eq('negozio_id', n.id).order('created_at', { ascending:false }).limit(20)
   ]);
   for (const r of [fo, cl, or]) if (r.error) throw r.error;
-  S.formati = fo.data; S.clienti = cl.data; S.ordini = or.data;
+  S.formati = fo.data; S.clienti = cl.data; S.ordini = or.data; S.annunci = an.data || [];
+  setTimeout(liveGestore, 0);
 }
 const negozio = () => (S.negozi || [])[0];
 function daGestire(){ return (S.clienti || []).filter(c => c.stato === 'in_attesa').length + (S.ordini || []).filter(o => o.stato === 'richiesta').length; }
@@ -1440,6 +1730,14 @@ function viewVendite(){
       <div class="shoplink">${esc(shopUrl(n.slug))}</div>
       <div class="actions" style="margin-top:0;flex-wrap:wrap"><button class="btn sec sm" onclick="copiaLink()">📋 Copia</button><button class="btn sec sm" onclick="condividiLink()">📤 Condividi</button>
         <button class="btn sec sm" onclick="qrNegozio()">🔳 QR</button><button class="btn sec sm" onclick="formNegozio()">⚙︎ Impostazioni</button></div></div>
+    <div class="card"><h2>🎨 Vetrina<span class="sp"></span><button class="btn sm sec" onclick="anteprimaVetrina()">👀 Anteprima</button></h2>
+      <div class="vt-mini tap" onclick="formVetrina()" style="${accento(n.vetrina)};${n.copertina_url ? `background-image:url('${esc(n.copertina_url)}')` : ''}">
+        <div><small>🫒 ${esc(n.nome)}</small><b>${esc(n.vetrina?.titolo || n.nome)}</b></div></div>
+      <div class="muted" style="font-size:12.5px;margin:6px 0 8px">${[n.copertina_url && 'copertina', (n.galleria || []).length && `${n.galleria.length} foto`, n.vetrina?.storia && 'storia', n.vetrina?.annata && 'annata', Object.keys(n.vetrina?.premi || {}).length && 'premi'].filter(Boolean).join(' · ') || 'Aggiungi copertina, foto e la vostra storia: è la prima cosa che vede chi apre il link.'}</div>
+      <button class="btn block" onclick="formVetrina()">🎨 Personalizza la vetrina</button></div>
+    <div class="card"><h2>📣 Bacheca<span class="sp"></span><button class="btn sm sec" onclick="formAnnuncio()">+ Annuncio</button></h2>
+      ${(S.annunci || []).slice(0, 4).map(a => `<div class="row tap" onclick="formAnnuncio('${a.id}')"><div style="font-size:22px">${esc(a.emoji)}</div><div class="main"><div class="t">${esc(a.titolo)}</div>
+        <div class="s">${quandoFa(a.created_at)}${a.testo ? ' · ' + esc(a.testo) : ''}</div></div></div>`).join('') || '<div class="muted">Avvisa i clienti di raccolta, olio nuovo e giorni di consegna: lo vedono subito e ricevono una notifica.</div>'}</div>
     ${attesa.length ? `<div class="card warn"><h2>🙋 Richieste di accesso (${attesa.length})</h2>
       ${attesa.map(c => `<div class="row"><div class="main"><div class="t">${esc(c.nome)}</div><div class="s">${esc(c.email || '')}${c.telefono ? ' · ' + esc(c.telefono) : ''}</div>
         <div class="s" style="white-space:normal">📍 ${esc(indCompleto(c))}</div></div>
@@ -1456,8 +1754,8 @@ function viewVendite(){
       ${S.formati.map(f => `<div class="row tap" onclick="formFormato('${f.id}')"><div class="main"><div class="t">${esc(f.nome)}${f.attivo ? '' : ' <span class="badge grey">nascosto</span>'}</div>
         <div class="s">${num(f.litri,2)} L</div></div><div class="n">${f.prezzo != null ? eur(f.prezzo) : '<span class="muted">da concordare</span>'}</div></div>`).join('') || '<div class="empty">Aggiungi i formati che vendi.</div>'}</div>
     <div class="card"><h2>👥 Clienti (${S.clienti.filter(c => c.stato === 'approvato').length} autorizzati)</h2>
-      ${S.clienti.filter(c => c.stato !== 'in_attesa').map(c => `<div class="row tap" onclick="schedaCliente('${c.id}')"><div class="main"><div class="t">${esc(c.nome)}</div>
-        <div class="s">${esc(c.comune)} · ${S.ordini.filter(o => o.cliente_id === c.id && o.stato !== 'annullato').length} ordini</div></div>${badgeSt(c.stato, STATI_CLI)}</div>`).join('') || '<div class="empty">Ancora nessun cliente. Manda il link a chi vuoi.</div>'}</div>`;
+      ${S.clienti.filter(c => c.stato !== 'in_attesa').map(c => { const p = puntiDa(c, S.ordini); return `<div class="row tap" onclick="schedaCliente('${c.id}')"><div class="main"><div class="t">${esc(c.nome)}</div>
+        <div class="s">${esc(c.comune)} · ${S.ordini.filter(o => o.cliente_id === c.id && o.stato !== 'annullato').length} ordini${p ? ` · ${p.liv.ic} ${p.punti} punti` : ''}</div></div>${badgeSt(c.stato, STATI_CLI)}</div>`; }).join('') || '<div class="empty">Ancora nessun cliente. Manda il link a chi vuoi.</div>'}</div>`;
 }
 function formNegozio(){
   const n = negozio() || {};
@@ -1488,7 +1786,11 @@ function formFormato(id){
     {name:'litri',label:'Litri',type:'number',required:true,value:f.litri,half:true},
     {name:'prezzo',label:'Prezzo indicativo (€)',type:'number',value:f.prezzo,half:true},
     {name:'attivo',label:'Visibile ai clienti',type:'select',options:[['true','Sì'],['false','No']],value:String(f.attivo ?? true),empty:false,half:true},
-    {name:'ordine',label:'Posizione in elenco',type:'number',value:f.ordine ?? (S.formati.length + 1),half:true}],
+    {name:'ordine',label:'Posizione in elenco',type:'number',value:f.ordine ?? (S.formati.length + 1),half:true},
+    {name:'descrizione',label:'Descrizione per la vetrina',type:'textarea',value:f.descrizione,ph:'es. Latta a chiusura ermetica, ideale per la famiglia'},
+    {name:'foto_url',type:'hidden',value:f.foto_url}],
+    extra:`<div class="foto-formato"><div id="fotoFmt" style="${f.foto_url ? `background-image:url('${esc(f.foto_url)}')` : ''}">${f.foto_url ? '' : '🫒'}</div>
+      <button type="button" class="btn sec sm" onclick="scegliFoto(u=>{$('#frm').foto_url.value=u;const d=$('#fotoFmt');d.style.backgroundImage='url('+u+')';d.textContent=''})">📷 Foto del formato</button></div>`,
     onSubmit: v => { v.attivo = v.attivo === 'true'; v.ordine = v.ordine || 0; if (!id) v.negozio_id = negozio().id; return save('formati', v, id); },
     onDelete: id && (() => remove('formati', id)) });
 }
@@ -1504,7 +1806,8 @@ function schedaCliente(id){
       ${c.email ? `<div class="row"><div class="main">Email</div><a class="n" href="mailto:${esc(c.email)}">${esc(c.email)}</a></div>` : ''}
       ${c.telefono ? `<div class="row"><div class="main">Telefono</div><a class="n" href="tel:${esc(c.telefono)}">${esc(c.telefono)}</a></div>` : ''}
       <div class="row"><div class="main">Indirizzo<div class="s" style="white-space:normal">${esc(indCompleto(c))}${c.note_indirizzo ? ' · ' + esc(c.note_indirizzo) : ''}</div></div><a class="n" href="${mapsDir(c)}" target="_blank" rel="noopener">Mappa ↗</a></div>
-      <div class="row"><div class="main">Ordini</div><div class="n">${ord.filter(o => o.stato !== 'annullato').length} · ${eur(sum(ord.filter(o => o.stato === 'consegnato'), o => o.totale))} incassati</div></div></div>
+      <div class="row"><div class="main">Ordini</div><div class="n">${ord.filter(o => o.stato !== 'annullato').length} · ${eur(sum(ord.filter(o => o.stato === 'consegnato'), o => o.totale))} incassati</div></div>
+      ${(p => p ? `<div class="row"><div class="main">Punti oliva<div class="s">${p.pros ? `mancano ${p.mancano} punti a ${p.pros.ic} ${p.pros.nome}` : 'livello massimo'}</div></div><div class="n">${p.liv.ic} ${p.liv.nome} · ${p.punti}</div></div>` : '')(puntiDa(c, S.ordini))}</div>
     <div class="actions">${c.stato === 'approvato' ? `<button class="btn danger" onclick="statoCliente('${id}','bloccato')">Blocca</button>` : `<button class="btn" onclick="statoCliente('${id}','approvato')">Autorizza</button>`}</div>`);
 }
 function gestisciOrdine(id){
@@ -1831,6 +2134,11 @@ registraSW();
    Ogni voce: ic (icona), t (titolo), d (descrizione), facoltativi perm ('soldi' | 'struttura' | 'team')
    per mostrarla solo a chi può usarla, cta (testo del pulsante) e vai (funzione che porta alla novità). */
 const NOVITA = [
+  { n:8, data:'2026-11-02', titolo:'Vetrina, bacheca e punti oliva', voci:[
+    { ic:'🎨', t:'Vetrina personalizzabile', d:'Copertina, galleria di foto, colore, la vostra storia e le note sull\'annata. Chi apre il link la vede anche prima di essere autorizzato.', perm:'soldi', cta:'Personalizza', vai:() => { S.tab = 'vendite'; render(); setTimeout(formVetrina, 300); } },
+    { ic:'📣', t:'Bacheca per i clienti', d:'Pubblica un annuncio (raccolta, olio nuovo, giorni di consegna): i clienti lo vedono subito e ricevono una notifica.', perm:'soldi', cta:'Scrivi un annuncio', vai:() => { S.tab = 'vendite'; render(); setTimeout(formAnnuncio, 300); } },
+    { ic:'🫒', t:'Punti oliva', d:'I clienti accumulano punti con gli ordini consegnati e salgono di livello, da Germoglio a Ulivo secolare. Tu decidi i premi.', perm:'soldi' },
+    { ic:'⚡', t:'Tutto in tempo reale', d:'Nuovi ordini e richieste ti compaiono senza ricaricare; i clienti vedono subito conferme e consegne.', perm:'soldi' } ]},
   { n:7, data:'2026-11-01', titolo:'Le novità, sempre a portata di mano', voci:[
     { ic:'✨', t:'Cosa c\'è di nuovo', d:'Ogni volta che l\'app si aggiorna, questa finestra ti mostra le funzioni nuove. Puoi rileggerle quando vuoi da ⚙︎ → Novità.' } ]},
   { n:6, data:'2026-11-01', titolo:'Posizione da Google Maps', voci:[
@@ -1924,7 +2232,7 @@ function guidaSchermate(){
     ['🔔','Avvisi sul telefono','Attiva le notifiche da ⚙︎: ti avvisiamo di gelate e piogge in arrivo, dei lavori in programma e, se gestisci le vendite, di nuovi clienti e ordini. Su iPhone aggiungi prima l\'app alla schermata Home.','⚙︎ → Notifiche'],
     ['📌','Promemoria dei lavori','Programma i lavori da fare, come un trattamento da ripetere tra 15 giorni: il giorno stesso arriva l\'avviso a tutta la squadra.','Lavori → Da fare'],
     ['🌤️','Il meteo del terreno','Previsioni a 7 giorni dove si trova l\'appezzamento, con avvisi su gelate, piogge e giorni adatti ai trattamenti.','Annata'],
-    ['🛒','Vendi l\'olio','Attiva il negozio e manda il link ai clienti: li autorizzi, loro prenotano, decidi il prezzo su ogni ordine e consegni a casa loro.','Vendite','soldi'],
+    ['🛒','Vendi l\'olio','Personalizza la vetrina, manda il link ai clienti e autorizzali: prenotano, accumulano punti oliva, e tu decidi il prezzo su ogni ordine.','Vendite','soldi'],
     ['💶','I conti dell\'annata','Spese ed entrate per categoria, con il saldo dell\'anno: i costi di lavori e frantoio e gli incassi delle vendite entrano in automatico.','Conti','soldi'],
     ['👥','Lavora in squadra','Invita un manager o chi lavora in campo: il manager gestisce tutto, l\'agricoltore registra lavori e raccolte senza vedere conti e vendite. Puoi revocare l\'accesso quando vuoi.','⚙︎ → Collaboratori','team'],
     coll ? ['🚀','Iniziamo!', agr ? 'Quando finisci un lavoro in campo, registralo subito con il pulsante +: così resta nello storico dell\'uliveto e lo vede anche il titolare.' : 'Trovi tutto nelle schede in basso. Consiglio: aggiungi l\'app alla schermata Home dal menu del browser.', null]
@@ -1989,10 +2297,12 @@ function renderAuth(){
     if (error) return fail(error);
     if (authMode==='signup' && !data.session) toast('Controlla la tua email per confermare l\'account, poi accedi.');
   };
-  if (shop) sb.rpc('negozio_pubblico', { p_slug: SHOP_PARAM }).then(({ data }) => {
-    const n = data?.[0]; if (!n || !$('#shopNome')) return;
-    $('#shopNome').textContent = n.nome;
-    $('#shopDesc').textContent = (n.descrizione ? n.descrizione + ' ' : '') + 'Accedi o crea un account per chiedere di poter prenotare.';
+  if (shop) sb.rpc('vetrina_pubblica', { p_slug: SHOP_PARAM }).then(({ data }) => {
+    if (!data || !$('#shopNome')) return;
+    $('.auth').classList.add('con-vetrina');
+    $('.auth').insertAdjacentHTML('afterbegin', htmlVetrina(data));
+    $('#shopNome').textContent = 'Prenota il nostro olio';
+    $('#shopDesc').textContent = 'Accedi o crea un account per chiedere di poter prenotare. Chi viene autorizzato riceve 50 punti oliva di benvenuto.';
   });
 }
 

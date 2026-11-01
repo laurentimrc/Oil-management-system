@@ -15,6 +15,7 @@ Web app per gestire l'intero ciclo di un uliveto, **pianta per pianta**: lavori 
 - **Lavori**: potatura, concimazione, trattamenti, irrigazione, lavorazioni, sfalcio, con prodotto, dose, giorni di carenza, ore e costi; assegnabili a tutto l'uliveto, a un appezzamento o a singole piante.
 - **Raccolta e frantoio**: kg di olive per pianta o appezzamento, moliture con litri/kg di olio e calcolo automatico della resa.
 - **Vendita olio**: negozio con link e QR da condividere; i clienti si registrano e chiedono l'accesso, il gestore li autorizza; prenotazione per formati con controllo della disponibilità, prezzo deciso dal gestore su ogni ordine, consegna all'indirizzo del cliente, incasso registrato automaticamente nei Conti.
+- **Vetrina e clienti**: titolare e manager personalizzano la vetrina (copertina, galleria, colore, storia, annata, foto e descrizione dei formati, WhatsApp, prezzi e disponibilità visibili o no), visibile anche a chi non è ancora autorizzato; bacheca di annunci con notifica ai clienti; aggiornamenti in tempo reale (Supabase Realtime) su ordini, richieste e annunci; **punti oliva**: 50 di benvenuto più 20 punti e 10 per litro a ogni ordine consegnato, cinque livelli da Germoglio a Ulivo secolare con premi decisi dal produttore. I punti si calcolano dagli ordini consegnati, quindi il cliente non può modificarli.
 - **Conti**: spese ed entrate per categoria, saldo dell'annata; i costi di lavori e moliture sono inclusi in automatico.
 - **Collaboratori**: il titolare invita via email un *manager* (vede e modifica tutto, tranne il team) o un *agricoltore* (vede l'uliveto, registra lavori e raccolte, aggiorna le piante; niente conti, vendite e costi). L'invito si attiva solo con email confermata; l'accesso si revoca in ogni momento.
 - **QR code**: ogni pianta ha un QR univoco che apre direttamente la sua scheda; stampa delle etichette in fogli A4 da 12 (tutte o per appezzamento).
@@ -31,7 +32,7 @@ Web app per gestire l'intero ciclo di un uliveto, **pianta per pianta**: lavori 
 - Link brevi di Google Maps: Edge Function [`supabase/functions/risolvi-link`](supabase/functions/risolvi-link/index.ts), che segue i reindirizzamenti solo verso host di Google.
 - Hosting: GitHub Pages.
 
-Lo schema del database è in [`supabase/schema.sql`](supabase/schema.sql) (gestione dell'uliveto) [`supabase/collaboratori.sql`](supabase/collaboratori.sql) (accesso condiviso per ruolo), [`supabase/notifiche.sql`](supabase/notifiche.sql) (promemoria e notifiche) e [`supabase/vendite.sql`](supabase/vendite.sql) (vendita olio: i clienti scrivono solo tramite funzioni che verificano autorizzazione e disponibilità).
+Lo schema del database è in [`supabase/schema.sql`](supabase/schema.sql) (gestione dell'uliveto) [`supabase/collaboratori.sql`](supabase/collaboratori.sql) (accesso condiviso per ruolo), [`supabase/notifiche.sql`](supabase/notifiche.sql) (promemoria e notifiche) [`supabase/vendite.sql`](supabase/vendite.sql) (vendita olio: i clienti scrivono solo tramite funzioni che verificano autorizzazione e disponibilità) e [`supabase/vetrina.sql`](supabase/vetrina.sql) (vetrina pubblica, bacheca, notifiche ai clienti, foto nello storage `vetrine`, tempo reale).
 
 ## Configurazione Supabase
 
