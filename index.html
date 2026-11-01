@@ -29,8 +29,10 @@
 html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;-webkit-tap-highlight-color:transparent}
 button,input,select,textarea{font:inherit;color:inherit}
 header{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(10px + env(safe-area-inset-top)) 16px 8px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
-header h1{font-size:19px;margin:0;flex:1;letter-spacing:-.2px}
+header h1{font-size:19px;margin:0;flex:1;letter-spacing:-.2px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 header h1 span{color:var(--olive)}
+header h1 .ruolo{font-size:11px;font-weight:700;background:var(--olive-soft);color:var(--olive);border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:3px;letter-spacing:0}
+.invito{background:var(--olive-soft);border-radius:10px;padding:10px 12px;font-size:13.5px;line-height:1.5;margin:6px 0 10px;white-space:pre-wrap}
 main{padding:14px 16px calc(90px + env(safe-area-inset-bottom));max-width:720px;margin:0 auto}
 nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:6;background:var(--card);border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
 nav.tabs button{flex:1;border:0;background:none;padding:9px 2px 8px;font-size:11px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
@@ -153,6 +155,7 @@ label.f textarea{min-height:70px;resize:vertical}
 .plist{border:1px solid var(--line);border-radius:10px;background:var(--card);max-height:220px;overflow:auto;padding:4px 10px}
 .plist label{display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
 .plist label:first-child{border-top:0}
+.plist input[type=checkbox]{width:18px!important;height:18px;flex:0 0 auto;margin:0}
 .actions{display:flex;gap:10px;margin-top:14px}
 .actions .btn{flex:1}
 .qrbox{background:#fff;border-radius:12px;padding:10px;width:190px;margin:0 auto 8px;border:1px solid var(--line)}
@@ -366,26 +369,30 @@ function fail(e){ console.error(e); toast('Errore: '+(e?.message||e)); }
 
 /* ===== Dati ===== */
 async function loadAll(){
-  const q = (t, sel='*', ord='created_at') => sb.from(t).select(sel).order(ord,{ascending:false});
+  const own = S.owner || S.user.id;
+  const q = (t, sel='*', ord='created_at') => sb.from(t).select(sel).eq('user_id', own).order(ord,{ascending:false});
   const res = await Promise.all([
-    q('appezzamenti','*','nome'), sb.from('piante').select('*').order('codice'),
+    q('appezzamenti','*','nome'), sb.from('piante').select('*').eq('user_id', own).order('codice'),
     q('interventi','*, intervento_piante(pianta_id)','data'), q('raccolte','*','data'),
-    q('moliture','*','data'), q('movimenti','*','data')
+    q('moliture','*','data'), puo('soldi') ? q('movimenti','*','data') : Promise.resolve({ data:[] })
   ]);
   const err = res.find(r=>r.error); if (err) throw err.error;
   [S.appezzamenti,S.piante,S.interventi,S.raccolte,S.moliture,S.movimenti] = res.map(r=>r.data);
   S.appezzamenti.sort((a,b)=>a.nome.localeCompare(b.nome));
   S.piante.sort((a,b)=>a.codice.localeCompare(b.codice,'it',{numeric:true}));
   await loadVendite();
+  S.collaboratori = puo('team') ? ((await sb.from('collaboratori').select('*').eq('owner_id', S.user.id).order('created_at')).data || []) : [];
   scriviCache();
 }
 /* Copia locale dei dati: all'apertura l'app mostra subito l'ultima versione e intanto aggiorna */
-const CACHE_TAB = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti','negozi','formati','clienti','ordini'];
-const cacheKey = () => 'uliveto:dati:' + S.user?.id;
+const CACHE_TAB = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti','negozi','formati','clienti','ordini','collaboratori'];
+const cacheKey = () => 'uliveto:dati:' + S.user?.id + ':' + (S.owner || S.user?.id);
 function scriviCache(){ try { localStorage.setItem(cacheKey(), JSON.stringify(Object.fromEntries(CACHE_TAB.map(t=>[t,S[t]])))); } catch(e){} }
 function leggiCache(){ try { const c = JSON.parse(localStorage.getItem(cacheKey()) || 'null'); return c && CACHE_TAB.every(t=>Array.isArray(c[t])) ? c : null; } catch(e){ return null; } }
 function svuotaCache(){ try { Object.keys(localStorage).filter(k=>k.startsWith('uliveto:dati:')).forEach(k=>localStorage.removeItem(k)); } catch(e){} }
+const TAB_PROPRIE = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti'];
 async function save(table, values, id){
+  if (!id && TAB_PROPRIE.includes(table) && values.user_id == null) values = { ...values, user_id: S.owner || S.user.id };
   const q = id ? sb.from(table).update(values).eq('id',id) : sb.from(table).insert(values);
   const { data, error } = await q.select().single();
   if (error) throw error; return data;
@@ -439,19 +446,20 @@ function render(){
   hideSplash();
   if (!S.user) return renderAuth();
   if (modoCliente()) return renderCliente();
+  if (!puo('soldi') && ['vendite','conti'].includes(S.tab)) S.tab = 'home';
   const nuovaVista = S._lastTab !== S.tab; S._lastTab = S.tab;
   const ys = anni(); if (!ys.includes(S.year)) S.year = ys[0];
   $('#app').innerHTML = `
     <header>
-      <h1>🫒 <span>Uliveto</span></h1>
+      <h1>🫒 <span>${S.owner && S.owner !== S.user.id ? esc(accessoAttivo()?.azienda || 'Uliveto condiviso') : 'Uliveto'}</span>${S.ruolo && S.ruolo !== 'owner' ? `<small class="ruolo">${RUOLI[S.ruolo]}</small>` : ''}</h1>
       <select class="year" onchange="S.year=+this.value;render()">${ys.map(y=>`<option ${y===S.year?'selected':''}>${y}</option>`).join('')}</select>
       <button class="iconbtn" onclick="openSettings()" aria-label="Impostazioni">⚙︎</button>
     </header>
     <main id="view"></main>
-    ${['home','piante','lavori'].includes(S.tab)||S.tab==='raccolta'||S.tab==='conti' ? `<button class="fab" onclick="fab()" aria-label="Aggiungi">+</button>`:''}
+    ${['home','lavori','raccolta','conti'].includes(S.tab)||(S.tab==='piante'&&puo('struttura')) ? `<button class="fab" onclick="fab()" aria-label="Aggiungi">+</button>`:''}
     <nav class="tabs">
       ${[['home','🏡','Annata'],['piante','🌳','Piante'],['lavori','🛠️','Lavori'],['raccolta','🧺','Raccolta'],['vendite','🛒','Vendite'],['conti','💶','Conti']]
-        .map(([k,ic,l])=>{const b = k==='vendite' ? daGestire() : 0;
+        .filter(([k])=>puo('soldi') || !['vendite','conti'].includes(k)).map(([k,ic,l])=>{const b = k==='vendite' ? daGestire() : 0;
           return `<button class="${S.tab===k?'on':''}" onclick="S.tab='${k}';render();scrollTo(0,0)"><span class="ic">${ic}${b?`<em class="nb">${b}</em>`:''}</span>${l}</button>`}).join('')}
     </nav>`;
   ({home:viewHome,piante:viewPiante,lavori:viewLavori,raccolta:viewRaccolta,vendite:viewVendite,conti:viewConti})[S.tab]();
@@ -492,7 +500,7 @@ function viewHome(){
   const vuoto = !S.piante.length;
 
   $('#view').innerHTML = `
-    ${vuoto ? `<div class="card"><h2>👋 Iniziamo</h2>
+    ${vuoto && puo('struttura') ? `<div class="card"><h2>👋 Iniziamo</h2>
       <p style="margin:0 0 12px">Crea gli appezzamenti del tuo uliveto e poi aggiungi le piante (anche in blocco, es. da A-1 ad A-80).</p>
       <div class="actions" style="margin-top:0"><button class="btn sec" onclick="formAppezzamento()">+ Appezzamento</button><button class="btn" onclick="formBlocco()">+ Piante in blocco</button></div></div>`:''}
     ${carenze.length ? `<div class="card warn"><h2>⚠️ Tempi di carenza in corso</h2>
@@ -503,7 +511,8 @@ function viewHome(){
       <div class="kpi"><div class="l">Olive raccolte</div><div class="v">${num(a.kgRacc,0)} kg</div>${delta(a.kgRacc,p.kgRacc,' kg')}</div>
       <div class="kpi"><div class="l">Olio prodotto</div><div class="v">${num(a.lt,0)} L</div>${delta(a.lt,p.lt,' L')}</div>
       <div class="kpi"><div class="l">Resa media</div><div class="v">${a.resa!=null?num(a.resa)+'%':'—'}</div>${p.resa!=null?`<div class="d">${S.year-1}: ${num(p.resa)}%</div>`:''}</div>
-      <div class="kpi"><div class="l">Costo per litro</div><div class="v">${a.lt?eur(a.spese/a.lt):'—'}</div><div class="d">spese ${eur(a.spese)}</div></div>
+      ${puo('soldi') ? `<div class="kpi"><div class="l">Costo per litro</div><div class="v">${a.lt?eur(a.spese/a.lt):'—'}</div><div class="d">spese ${eur(a.spese)}</div></div>`
+        : `<div class="kpi"><div class="l">Lavori registrati</div><div class="v">${a.int.length}</div><div class="d">${num(a.ore)} ore</div></div>`}
     </div>
     <div class="card" id="meteoCard"><h2>🌤️ Meteo</h2><div class="empty">Carico le previsioni…</div></div>
     <div class="card"><h2>📅 ${MESI_L[m]}: cosa fare di solito</h2>
@@ -523,7 +532,7 @@ function rowIntervento(i){
   const det = [targetLabel(i), i.prodotto, i.ore?num(i.ore)+' h':null].filter(Boolean).join(' · ');
   return `<div class="row tap" onclick="formIntervento('${i.id}')"><div style="font-size:22px">${TIPO_IC[i.tipo]||'📝'}</div>
     <div class="main"><div class="t">${esc(i.tipo[0].toUpperCase()+i.tipo.slice(1))}${i.descrizione?' — '+esc(i.descrizione):''}</div><div class="s">${fdate(i.data)} · ${esc(det)}</div></div>
-    ${i.costo?`<div class="n">${eur(i.costo)}</div>`:''}</div>`;
+    ${i.costo && puo('soldi')?`<div class="n">${eur(i.costo)}</div>`:''}</div>`;
 }
 
 function viewPiante(){
@@ -536,7 +545,7 @@ function viewPiante(){
     <input class="search" placeholder="Cerca per codice, varietà, note…" value="${esc(S.q)}" oninput="S.q=this.value;viewPiante();const s=document.querySelector('.search');s.focus();s.setSelectionRange(s.value.length,s.value.length)">
     ${S.appezzamenti.length?`<div class="chips"><button class="chip ${S.filtroApp==='tutti'?'on':''}" onclick="S.filtroApp='tutti';viewPiante()">Tutti</button>
       ${S.appezzamenti.map(a=>`<button class="chip ${S.filtroApp===a.id?'on':''}" onclick="S.filtroApp='${a.id}';viewPiante()">${esc(a.nome)}</button>`).join('')}</div>`:''}
-    <div class="card"><h2>${list.length} piante<span class="sp"></span><button class="btn sm sec" onclick="formEtichette()">🏷️ QR</button><button class="btn sm sec" onclick="formBlocco()">+ In blocco</button></h2>
+    <div class="card"><h2>${list.length} piante<span class="sp"></span><button class="btn sm sec" onclick="formEtichette()">🏷️ QR</button>${puo('struttura')?'<button class="btn sm sec" onclick="formBlocco()">+ In blocco</button>':''}</h2>
       ${list.map(p=>`<div class="row tap" onclick="detPianta('${p.id}')"><div class="main"><div class="t">${esc(p.codice)} ${p.stato!=='sana'?`<span class="badge ${STATO_CL[p.stato]}">${esc(p.stato)}</span>`:''}</div>
         <div class="s">${[p.varieta,appName(p.appezzamento_id),p.anno_impianto?'impianto '+p.anno_impianto:null].filter(Boolean).map(esc).join(' · ')||'—'}</div></div>
         <div class="n">${kgY[p.id]?num(kgY[p.id])+' kg':''}</div></div>`).join('') || `<div class="empty">Nessuna pianta. Usa + per aggiungerne.</div>`}</div>`;
@@ -801,7 +810,7 @@ function viewLavori(){
   $('#view').innerHTML = `
     <div class="chips">${['tutti',...TIPI].map(t=>`<button class="chip ${S.filtroTipo===t?'on':''}" onclick="S.filtroTipo='${t}';viewLavori()">${t==='tutti'?'Tutti':(TIPO_IC[t]+' '+t)}</button>`).join('')}</div>
     <div class="kpis"><div class="kpi"><div class="l">Ore di lavoro ${S.year}</div><div class="v">${num(a.ore)}</div></div>
-      <div class="kpi"><div class="l">Costo lavori ${S.year}</div><div class="v">${eur(sum(a.int,i=>i.costo))}</div></div></div>
+      ${puo('soldi') ? `<div class="kpi"><div class="l">Costo lavori ${S.year}</div><div class="v">${eur(sum(a.int,i=>i.costo))}</div></div>` : `<div class="kpi"><div class="l">Lavori ${S.year}</div><div class="v">${a.int.length}</div></div>`}</div>
     <div class="card"><h2>${list.length} lavori nel ${S.year}</h2>${list.map(rowIntervento).join('')||'<div class="empty">Nessun lavoro. Usa + per registrarne uno.</div>'}</div>`;
 }
 
@@ -815,9 +824,9 @@ function viewRaccolta(){
       <div class="kpi"><div class="l">Olio</div><div class="v">${num(a.lt,0)} L</div></div>
       <div class="kpi"><div class="l">Resa</div><div class="v">${a.resa!=null?num(a.resa)+'%':'—'}</div></div>
     </div>
-    <div class="card"><h2>🏭 Moliture<span class="sp"></span><button class="btn sm sec" onclick="formMolitura()">+ Molitura</button></h2>
-      ${a.mol.map(m=>{const r=kgOlio(m)!=null?kgOlio(m)/m.kg_olive*100:null;return `<div class="row tap" onclick="formMolitura('${m.id}')"><div class="main">
-        <div class="t">${num(m.kg_olive,0)} kg → ${litri(m)!=null?num(litri(m))+' L':'—'}</div><div class="s">${fdate(m.data)}${m.frantoio?' · '+esc(m.frantoio):''}${m.costo?' · '+eur(m.costo):''}</div></div>
+    <div class="card"><h2>🏭 Moliture<span class="sp"></span>${puo('struttura')?'<button class="btn sm sec" onclick="formMolitura()">+ Molitura</button>':''}</h2>
+      ${a.mol.map(m=>{const r=kgOlio(m)!=null?kgOlio(m)/m.kg_olive*100:null;return `<div class="row ${puo('struttura')?'tap':''}" onclick="${puo('struttura')?`formMolitura('${m.id}')`:''}"><div class="main">
+        <div class="t">${num(m.kg_olive,0)} kg → ${litri(m)!=null?num(litri(m))+' L':'—'}</div><div class="s">${fdate(m.data)}${m.frantoio?' · '+esc(m.frantoio):''}${m.costo && puo('soldi')?' · '+eur(m.costo):''}</div></div>
         ${r!=null?`<span class="badge gold">resa ${num(r)}%</span>`:''}</div>`}).join('') || '<div class="empty">Nessuna molitura registrata.</div>'}</div>
     <div class="card"><h2>🧺 Raccolte<span class="sp"></span><button class="btn sm sec" onclick="formRaccolta()">+ Raccolta</button></h2>
       ${a.rac.map(r=>`<div class="row tap" onclick="formRaccolta('${r.id}')"><div class="main">
@@ -875,6 +884,7 @@ function fieldHtml(f){
 function selPiante(m){ document.querySelectorAll('input[name=piante]').forEach(c=>c.checked = m===true ? true : m===false ? false : (c.checked || c.dataset.app===m)); }
 
 function openForm({title, fields, onSubmit, onDelete, extra=''}){
+  fields = fields.filter(Boolean);
   const rows = []; // affianca campi marcati half
   for (let i=0;i<fields.length;i++){
     const f=fields[i];
@@ -908,8 +918,8 @@ function fab(){
 }
 function quickAdd(){
   openSheet(`<h3>Aggiungi</h3><div class="card">
-    ${[['🛠️','Lavoro / trattamento','formIntervento()'],['🧺','Raccolta','formRaccolta()'],['🏭','Molitura','formMolitura()'],['💶','Spesa o entrata','formMovimento()'],['🌳','Pianta','formPianta()']]
-      .map(([ic,l,fn])=>`<div class="row tap" onclick="${fn}"><div style="font-size:22px">${ic}</div><div class="main"><div class="t">${l}</div></div><div class="muted">›</div></div>`).join('')}</div>`);
+    ${[['🛠️','Lavoro / trattamento','formIntervento()'],['🧺','Raccolta','formRaccolta()'],['🏭','Molitura','formMolitura()','struttura'],['💶','Spesa o entrata','formMovimento()','soldi'],['🌳','Pianta','formPianta()','struttura']]
+      .filter(x=>!x[3] || puo(x[3])).map(([ic,l,fn])=>`<div class="row tap" onclick="${fn}"><div style="font-size:22px">${ic}</div><div class="main"><div class="t">${l}</div></div><div class="muted">›</div></div>`).join('')}</div>`);
 }
 
 function formAppezzamento(id){
@@ -993,7 +1003,7 @@ function formPianta(id){
     {name:'lng',label:'Longitudine',type:'number',value:p.lng,half:true},
     {name:'note',label:'Note',type:'textarea',value:p.note}],
     extra:`<button type="button" class="btn sm sec" style="margin:-4px 0 10px" onclick="gps()">📍 Usa la mia posizione</button>`,
-    onSubmit: v=>save('piante',v,id), onDelete: id&&(()=>remove('piante',id)) });
+    onSubmit: v=>save('piante',v,id), onDelete: id&&puo('struttura')&&(()=>remove('piante',id)) });
 }
 function gps(){
   if(!navigator.geolocation) return toast('Geolocalizzazione non disponibile');
@@ -1013,7 +1023,7 @@ function formBlocco(){
     onSubmit: async v=>{
       if (v.a < v.da || v.a - v.da > 2000) throw new Error('Intervallo non valido (max 2000 piante)');
       const rows=[]; for(let n=v.da;n<=v.a;n++) rows.push({codice:(v.prefisso||'')+String(n).padStart(v.cifre||1,'0'),appezzamento_id:v.appezzamento_id,varieta:v.varieta,anno_impianto:v.anno_impianto});
-      const { error } = await sb.from('piante').insert(rows); if (error) throw error;
+      const { error } = await sb.from('piante').insert(rows.map(r=>({ ...r, user_id: S.owner || S.user.id }))); if (error) throw error;
     }});
 }
 
@@ -1029,14 +1039,14 @@ function formIntervento(id, preset){
     {name:'unita',label:'Unità',value:i.unita,ph:'kg, L, g/hl…',half:true},
     {name:'giorni_carenza',label:'Giorni di carenza',type:'number',value:i.giorni_carenza,hint:'Per i trattamenti: dall\'etichetta del prodotto. L\'app ti avvisa fino a quando non raccogliere.'},
     {name:'ore',label:'Ore di lavoro',type:'number',value:i.ore,half:true},
-    {name:'costo',label:'Costo (€)',type:'number',value:i.costo,half:true},
+    puo('soldi') && {name:'costo',label:'Costo (€)',type:'number',value:i.costo,half:true},
     {name:'appezzamento_id',label:'Appezzamento',type:'select',options:appOpts(),value:i.appezzamento_id,empty:'Intero uliveto / piante scelte sotto'},
     {name:'piante',label:'Piante specifiche (facoltativo)',type:'piante',value:sel}],
     onSubmit: async v=>{
       const { piante, ...rec } = v;
       const saved = await save('interventi', rec, id);
       if (id){ const { error } = await sb.from('intervento_piante').delete().eq('intervento_id', id); if (error) throw error; }
-      if (piante.length){ const { error } = await sb.from('intervento_piante').insert(piante.map(p=>({intervento_id:saved.id,pianta_id:p}))); if (error) throw error; }
+      if (piante.length){ const { error } = await sb.from('intervento_piante').insert(piante.map(p=>({intervento_id:saved.id,pianta_id:p,user_id:S.owner || S.user.id}))); if (error) throw error; }
     },
     onDelete: id&&(()=>remove('interventi',id)) });
 }
@@ -1087,12 +1097,15 @@ function formMovimento(id){
 }
 
 function openSettings(){
+  const st = puo('struttura');
   openSheet(`<h3>Impostazioni</h3>
-    <div class="card"><h2>Appezzamenti<span class="sp"></span><button class="btn sm sec" onclick="formAppezzamento()">+ Nuovo</button></h2>
-      ${S.appezzamenti.map(a=>`<div class="row tap" onclick="formAppezzamento('${a.id}')"><div class="main"><div class="t">${esc(a.nome)}</div>
+    ${cardUliveti()}
+    <div class="card"><h2>Appezzamenti<span class="sp"></span>${st?'<button class="btn sm sec" onclick="formAppezzamento()">+ Nuovo</button>':''}</h2>
+      ${S.appezzamenti.map(a=>`<div class="row ${st?'tap':''}" onclick="${st?`formAppezzamento('${a.id}')`:''}"><div class="main"><div class="t">${esc(a.nome)}</div>
         <div class="s">${S.piante.filter(p=>p.appezzamento_id===a.id).length} piante${a.superficie_mq?' · '+num(a.superficie_mq,0)+' m²':''}${catastoLotto(a)?' · '+esc(catastoLotto(a)):''}</div>
         ${indirizzoLotto(a)?`<div class="s" style="white-space:normal">📍 ${esc(indirizzoLotto(a))}</div>`:''}</div>
         ${navigaLotto(a)?`<a class="btn sm sec" href="${navigaLotto(a)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Vai ↗</a>`:'<div class="muted">›</div>'}</div>`).join('')||'<div class="empty">Nessun appezzamento.</div>'}</div>
+    ${puo('team') ? cardTeam() : ''}
     <div class="card"><h2>Dati</h2>
       <div class="row tap" onclick="closeSheet();apriGuida()"><div class="main"><div class="t">Guida dell'app</div><div class="s">Rivedi le funzioni principali</div></div><div class="muted">💡</div></div>
       <div class="row tap" onclick="formEtichette()"><div class="main"><div class="t">Stampa etichette QR</div><div class="s">Un QR per ogni pianta, da appendere al tronco</div></div><div class="muted">🏷️</div></div>
@@ -1274,7 +1287,8 @@ async function annullaOrdineCliente(id){
 
 /* ===== Vendite: parte del gestore ===== */
 async function loadVendite(){
-  const ne = await sb.from('negozi').select('*').eq('owner_id', S.user.id);
+  if (!puo('soldi')) { S.negozi = []; S.formati = []; S.clienti = []; S.ordini = []; return; }
+  const ne = await sb.from('negozi').select('*').eq('owner_id', S.owner || S.user.id);
   if (ne.error) throw ne.error;
   S.negozi = ne.data || [];
   const n = S.negozi[0];
@@ -1349,7 +1363,7 @@ function formNegozio(){
     onSubmit: async v => {
       v.slug = slugDa(v.slug); v.attivo = v.attivo === 'true';
       if (v.slug.length < 3) throw new Error('Il link deve avere almeno 3 caratteri');
-      const nuovo = !n.id;
+      const nuovo = !n.id; if (nuovo) v.owner_id = S.owner || S.user.id;
       try { const r = await save('negozi', v, n.id); if (nuovo) await creaFormatiBase(r.id); }
       catch(e){ if (String(e.message).includes('negozi_slug_key')) throw new Error('Questo indirizzo del link è già usato: scegline un altro'); throw e; }
       S.tab = 'vendite';
@@ -1467,6 +1481,116 @@ function stampaQrNegozio(){
   setTimeout(() => window.print(), 150);
 }
 
+/* ===== Collaboratori: accesso condiviso all'uliveto ===== */
+const RUOLI = { owner:'Titolare', manager:'Manager', agricoltore:'Agricoltore' };
+const RUOLI_DESC = {
+  manager: 'Vede e modifica tutto: piante, lavori, raccolta, conti e vendite. Non può gestire i collaboratori.',
+  agricoltore: 'Vede piante, mappa, meteo, lavori e raccolta. Registra lavori e raccolte e aggiorna lo stato delle piante. Non vede conti, vendite e costi.'
+};
+const PERMESSI = { soldi:['owner','manager'], struttura:['owner','manager'], team:['owner'] };
+function puo(cosa){ return (PERMESSI[cosa] || []).includes(S.ruolo || 'owner'); }
+const accessoAttivo = () => (S.accessi || []).find(a => a.owner_id === S.owner);
+const prefKey = () => 'uliveto:pref:' + S.user?.id;
+function leggiPref(){ try { return JSON.parse(localStorage.getItem(prefKey()) || 'null'); } catch(e){ return null; } }
+function salvaPref(){ try { localStorage.setItem(prefKey(), JSON.stringify({ owner:S.owner, ruolo:S.ruolo })); } catch(e){} }
+function svuotaStato(){ CACHE_TAB.forEach(t => S[t] = []); S._lastTab = null; }
+async function aggiornaAccessi(){
+  try { await sb.rpc('accetta_inviti'); } catch(e){}
+  const { data, error } = await sb.from('collaboratori').select('owner_id, ruolo, azienda, stato').eq('user_id', S.user.id).eq('stato', 'attivo');
+  if (error) return;
+  S.accessi = data || [];
+  const pref = leggiPref();
+  if (S.owner !== S.user.id) {
+    const a = accessoAttivo();
+    if (a) S.ruolo = a.ruolo; else { S.owner = S.user.id; S.ruolo = 'owner'; }
+  } else if (!pref && S.accessi.length) {
+    // primo accesso di un collaboratore: apre direttamente l'uliveto a cui è stato invitato
+    S.owner = S.accessi[0].owner_id; S.ruolo = S.accessi[0].ruolo;
+    setTimeout(() => toast(`Benvenuto in ${S.accessi[0].azienda || 'un uliveto condiviso'} come ${RUOLI[S.ruolo].toLowerCase()}`), 1500);
+  } else S.ruolo = 'owner';
+  salvaPref();
+}
+async function cambiaUliveto(owner){
+  if (owner === S.owner) return closeSheet();
+  S.owner = owner; S.ruolo = owner === S.user.id ? 'owner' : (accessoAttivo()?.ruolo || 'agricoltore');
+  salvaPref(); closeSheet(); svuotaStato(); S.tab = 'home'; showSplash(); await refresh();
+}
+function cardUliveti(){
+  if (!(S.accessi || []).length) return '';
+  const voci = [{ owner_id:S.user.id, azienda:'Il mio uliveto', ruolo:'owner' }, ...S.accessi];
+  return `<div class="card"><h2>🫒 Uliveti a cui hai accesso</h2>
+    ${voci.map(v => `<div class="row tap" onclick="cambiaUliveto('${v.owner_id}')"><div class="main"><div class="t">${esc(v.azienda || 'Uliveto condiviso')}</div><div class="s">${RUOLI[v.ruolo]}</div></div>
+      ${v.owner_id === S.owner ? '<span class="badge">in uso</span>' : '<div class="muted">›</div>'}</div>`).join('')}</div>`;
+}
+const STATI_COLLAB = { invitato:'Invitato', attivo:'Attivo', revocato:'Revocato' };
+function cardTeam(){
+  const t = S.collaboratori || [];
+  return `<div class="card"><h2>👥 Collaboratori<span class="sp"></span><button class="btn sm sec" onclick="formInvito()">+ Invita</button></h2>
+    ${t.length ? t.map(c => `<div class="row tap" onclick="schedaCollab('${c.id}')"><div class="main"><div class="t">${esc(c.nome || c.email)}</div>
+      <div class="s">${esc(RUOLI[c.ruolo])}${c.nome ? ' · ' + esc(c.email) : ''}</div></div>
+      <span class="st st-${{invitato:'richiesta',attivo:'approvato',revocato:'annullato'}[c.stato]}">${STATI_COLLAB[c.stato]}</span></div>`).join('')
+    : '<div class="muted">Dai accesso a un manager o a chi lavora in campo: vedranno il tuo uliveto dal loro telefono.</div>'}</div>`;
+}
+function nomeAzienda(){ return 'Uliveto di ' + ((S.user.email || '').split('@')[0].split(/[._-]/)[0].replace(/^./, x => x.toUpperCase()) || 'casa'); }
+function formInvito(){
+  openForm({ title:'Invita un collaboratore', fields:[
+    {name:'email',label:'Email',type:'email',required:true,ph:'nome@esempio.it'},
+    {name:'nome',label:'Nome',ph:'es. Giuseppe'},
+    {name:'ruolo',label:'Ruolo',type:'select',options:[['agricoltore','Agricoltore'],['manager','Manager']],value:'agricoltore',empty:false,
+     hint:'Agricoltore: ' + RUOLI_DESC.agricoltore + ' Manager: ' + RUOLI_DESC.manager},
+    {name:'azienda',label:'Nome dell\'uliveto che vedrà',value:(S.collaboratori||[])[0]?.azienda || nomeAzienda()}],
+    onSubmit: async v => {
+      v.email = (v.email || '').trim().toLowerCase();
+      if (v.email === (S.user.email || '').toLowerCase()) throw new Error('Questa è la tua email');
+      const { data, error } = await sb.from('collaboratori').insert({ ...v, owner_id:S.user.id }).select().single();
+      if (error) throw new Error(String(error.message).includes('collaboratori_owner_id_email_key') ? 'Hai già invitato questa email' : error.message);
+      setTimeout(() => schedaCollab(data.id, true), 400);
+    } });
+}
+function messaggioInvito(c){
+  return `Ciao${c.nome ? ' ' + c.nome : ''}! Ti ho dato accesso a "${c.azienda || nomeAzienda()}" sull'app Il mio Uliveto come ${RUOLI[c.ruolo].toLowerCase()}.\n\n1. Apri ${QR_BASE}\n2. Crea un account con questa email: ${c.email}\n3. Conferma l'email dal messaggio che ricevi\n\nAl primo accesso troverai il mio uliveto.`;
+}
+function schedaCollab(id, nuovo){
+  const c = (S.collaboratori || []).find(x => x.id === id); if (!c) return;
+  openSheet(`<h3>👤 ${esc(c.nome || c.email)}</h3>
+    ${nuovo ? '<div class="riepilogo">✓ Invito creato. Ora mandagli questo messaggio:</div>' : ''}
+    <div class="card">
+      <div class="row"><div class="main">Email</div><div class="n">${esc(c.email)}</div></div>
+      <div class="row"><div class="main">Stato</div><span class="st st-${{invitato:'richiesta',attivo:'approvato',revocato:'annullato'}[c.stato]}">${STATI_COLLAB[c.stato]}</span></div>
+      <div class="row"><div class="main">Ruolo<div class="s" style="white-space:normal">${esc(RUOLI_DESC[c.ruolo])}</div></div>
+        <select class="year" onchange="aggiornaCollab('${c.id}',{ruolo:this.value})">${['agricoltore','manager'].map(r => `<option value="${r}" ${r===c.ruolo?'selected':''}>${RUOLI[r]}</option>`).join('')}</select></div>
+      ${c.stato === 'invitato' ? `<div class="muted" style="margin-top:6px">In attesa che si registri con questa email e la confermi.</div>` : ''}
+    </div>
+    ${c.stato !== 'revocato' ? `<div class="card"><h2>✉️ Messaggio di invito</h2><div class="invito">${esc(messaggioInvito(c))}</div>
+      <div class="actions" style="margin-top:0"><button class="btn sec" onclick="condividiInvito('${c.id}')">📤 Condividi</button><button class="btn sec" onclick="copiaInvito('${c.id}')">📋 Copia</button></div></div>` : ''}
+    <div class="actions">
+      ${c.stato === 'attivo' ? `<button class="btn danger" onclick="aggiornaCollab('${c.id}',{stato:'revocato'},true)">Revoca l'accesso</button>` : ''}
+      ${c.stato === 'revocato' ? `<button class="btn" onclick="aggiornaCollab('${c.id}',{stato:'attivo'},true)">Ripristina l'accesso</button>` : ''}
+      ${c.stato !== 'attivo' ? `<button class="btn danger" onclick="eliminaCollab('${c.id}')">Elimina</button>` : ''}
+    </div>`);
+}
+async function aggiornaCollab(id, v, chiudi){
+  if (v.stato === 'revocato' && !confirm('Revocare l\'accesso? Non vedrà più il tuo uliveto.')) return;
+  const { error } = await sb.from('collaboratori').update(v).eq('id', id);
+  if (error) return fail(error);
+  await refresh(); toast(v.ruolo ? 'Ruolo aggiornato ✓' : v.stato === 'revocato' ? 'Accesso revocato' : 'Accesso ripristinato ✓');
+  chiudi ? closeSheet() : schedaCollab(id);
+}
+async function eliminaCollab(id){
+  if (!confirm('Eliminare questo invito?')) return;
+  const { error } = await sb.from('collaboratori').delete().eq('id', id);
+  if (error) return fail(error);
+  closeSheet(); await refresh(); toast('Invito eliminato');
+}
+async function copiaInvito(id){
+  const t = messaggioInvito(S.collaboratori.find(x => x.id === id));
+  try { await navigator.clipboard.writeText(t); toast('Messaggio copiato ✓'); } catch(e){ prompt('Copia il messaggio:', t); }
+}
+async function condividiInvito(id){
+  const t = messaggioInvito(S.collaboratori.find(x => x.id === id));
+  if (navigator.share) { try { await navigator.share({ text:t }); } catch(e){} } else copiaInvito(id);
+}
+
 /* ===== Guida iniziale ===== */
 const GUIDA = [
   ['🫒','Benvenuto in Il mio Uliveto','Tutto il ciclo del tuo uliveto in un\'unica app: piante, lavori, raccolta, olio e conti. Ecco in breve cosa puoi fare.',null],
@@ -1573,9 +1697,16 @@ async function avvia(){
     try { await avviaCliente(); } catch(e) { console.error(e); splashError('Non riesco a caricare il negozio. Controlla la connessione.'); }
     return;
   }
+  const pref = leggiPref();
+  S.owner = pref?.owner || S.user.id; S.ruolo = pref?.ruolo || 'owner';
   const c = leggiCache();
-  if (c) { Object.assign(S, c); S._daCache = true; S._caricato = true; render(); apriDaLink(); guidaSeNuova(); refresh(); return; }
-  showSplash(); await refresh();
+  if (c) {
+    Object.assign(S, c); S._daCache = true; S._caricato = true; render(); apriDaLink(); guidaSeNuova();
+    const prima = S.owner; await aggiornaAccessi();
+    if (S.owner !== prima) { svuotaStato(); showSplash(); }
+    refresh(); return;
+  }
+  showSplash(); await aggiornaAccessi(); await refresh();
   if (!S._caricato) splashError('Non riesco a caricare i dati. Controlla la connessione.');
   else guidaSeNuova();
 }

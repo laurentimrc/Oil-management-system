@@ -15,6 +15,7 @@ Web app per gestire l'intero ciclo di un uliveto, **pianta per pianta**: lavori 
 - **Raccolta e frantoio**: kg di olive per pianta o appezzamento, moliture con litri/kg di olio e calcolo automatico della resa.
 - **Vendita olio**: negozio con link e QR da condividere; i clienti si registrano e chiedono l'accesso, il gestore li autorizza; prenotazione per formati con controllo della disponibilità, prezzo deciso dal gestore su ogni ordine, consegna all'indirizzo del cliente, incasso registrato automaticamente nei Conti.
 - **Conti**: spese ed entrate per categoria, saldo dell'annata; i costi di lavori e moliture sono inclusi in automatico.
+- **Collaboratori**: il titolare invita via email un *manager* (vede e modifica tutto, tranne il team) o un *agricoltore* (vede l'uliveto, registra lavori e raccolte, aggiorna le piante; niente conti, vendite e costi). L'invito si attiva solo con email confermata; l'accesso si revoca in ogni momento.
 - **QR code**: ogni pianta ha un QR univoco che apre direttamente la sua scheda; stampa delle etichette in fogli A4 da 12 (tutte o per appezzamento).
 - **Guida iniziale**: presentazione animata delle funzioni al primo accesso (scorrevole, saltabile), richiamabile dalle impostazioni.
 - **Account e backup**: registrazione con email, recupero password, esportazione completa dei dati in JSON.
@@ -26,7 +27,7 @@ Web app per gestire l'intero ciclo di un uliveto, **pianta per pianta**: lavori 
 - Sicurezza: Row Level Security su tutte le tabelle, ogni utente accede solo ai propri dati. La chiave nel codice è la chiave *publishable*, pensata per stare nel browser.
 - Hosting: GitHub Pages.
 
-Lo schema del database è in [`supabase/schema.sql`](supabase/schema.sql) (gestione dell'uliveto) e [`supabase/vendite.sql`](supabase/vendite.sql) (vendita olio: i clienti scrivono solo tramite funzioni che verificano autorizzazione e disponibilità).
+Lo schema del database è in [`supabase/schema.sql`](supabase/schema.sql) (gestione dell'uliveto) [`supabase/collaboratori.sql`](supabase/collaboratori.sql) (accesso condiviso per ruolo) e [`supabase/vendite.sql`](supabase/vendite.sql) (vendita olio: i clienti scrivono solo tramite funzioni che verificano autorizzazione e disponibilità).
 
 ## Configurazione Supabase
 
