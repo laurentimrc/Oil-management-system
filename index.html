@@ -221,6 +221,29 @@ nav.tabs button.on .ic{animation:tab-pop .35s cubic-bezier(.3,1.6,.5,1)}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;animation-delay:0s!important;transition-duration:.01ms!important}
   .splash .branch{stroke-dashoffset:0}.splash .leaf{transform:none}.splash .olive,.splash .name{opacity:1}
 }
+/* cosa c'è di nuovo */
+.nv-ov{position:fixed;inset:0;z-index:42;background:rgba(20,22,15,0);display:flex;align-items:flex-end;justify-content:center;transition:background .25s}
+.nv-ov.on{background:rgba(20,22,15,.45)}
+.nv{background:var(--bg);width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;border-radius:24px 24px 0 0;transform:translateY(100%);transition:transform .38s cubic-bezier(.2,.9,.3,1);box-shadow:0 -10px 40px rgba(0,0,0,.2)}
+.nv-ov.on .nv{transform:none}
+@media (min-width:600px){.nv-ov{align-items:center}.nv{border-radius:24px;transform:translateY(30px) scale(.97);opacity:0;transition:transform .35s cubic-bezier(.2,.9,.3,1),opacity .25s}.nv-ov.on .nv{opacity:1}}
+.nv-head{text-align:center;padding:22px 20px 10px}
+.nv-head h2{font-size:22px;margin:10px 0 3px;letter-spacing:-.3px}
+.nv-spark{width:64px;height:64px;margin:0 auto;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--olive-soft) 75%);font-size:32px}
+.nv-ov.on .nv-spark span{display:inline-block;animation:nv-pop .7s cubic-bezier(.3,1.6,.5,1) .15s both, g-float 3s ease-in-out .9s infinite}
+@keyframes nv-pop{from{transform:scale(.2) rotate(-30deg);opacity:0}to{transform:none;opacity:1}}
+.nv-body{overflow:auto;padding:4px 18px 6px}
+.nv-rel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:10px}
+.nv-ov.on .nv-rel{animation:rise .45s cubic-bezier(.2,.8,.3,1) both}
+.nv-rt{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:700;font-size:14px;color:var(--olive);margin-bottom:4px}
+.nv-rt span{font-weight:500;font-size:12px;color:var(--muted)}
+.nv-voce{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.nv-voce:first-of-type{border-top:0}
+.nv-ic{font-size:26px;line-height:1.2;flex:0 0 auto}
+.nv-voce b{font-size:15px}
+.nv-voce p{margin:3px 0 0;color:var(--muted);font-size:13.5px;line-height:1.45}
+.nv-voce .btn{margin-top:8px}
+.nv-foot{padding:10px 18px calc(16px + env(safe-area-inset-bottom))}
 /* guida iniziale */
 #guida{position:fixed;inset:0;z-index:40;background:var(--bg);display:none;flex-direction:column}
 #guida.open{display:flex;animation:g-in .35s ease}
@@ -1191,6 +1214,7 @@ function openSettings(){
     <div class="card" id="cardNotifiche"><h2>🔔 Notifiche</h2><div class="muted">Controllo…</div></div>
     ${puo('team') ? cardTeam() : ''}
     <div class="card"><h2>Dati</h2>
+      <div class="row tap" onclick="closeSheet();apriNovita()"><div class="main"><div class="t">Novità</div><div class="s">Cosa è cambiato negli ultimi aggiornamenti</div></div><div class="muted">✨</div></div>
       <div class="row tap" onclick="closeSheet();apriGuida()"><div class="main"><div class="t">Guida dell'app</div><div class="s">Rivedi le funzioni principali</div></div><div class="muted">💡</div></div>
       <div class="row tap" onclick="formEtichette()"><div class="main"><div class="t">Stampa etichette QR</div><div class="s">Un QR per ogni pianta, da appendere al tronco</div></div><div class="muted">🏷️</div></div>
       <div class="row tap" onclick="esporta()"><div class="main"><div class="t">Esporta tutti i dati (JSON)</div><div class="s">Backup completo</div></div><div class="muted">↓</div></div>
@@ -1802,6 +1826,81 @@ async function provaNotifica(){
 }
 registraSW();
 
+/* ===== Cosa c'è di nuovo =====
+   COME AGGIUNGERE UNA NOVITÀ: inserisci in cima a NOVITA un oggetto con "n" = numero più alto + 1.
+   Ogni voce: ic (icona), t (titolo), d (descrizione), facoltativi perm ('soldi' | 'struttura' | 'team')
+   per mostrarla solo a chi può usarla, cta (testo del pulsante) e vai (funzione che porta alla novità). */
+const NOVITA = [
+  { n:7, data:'2026-11-01', titolo:'Le novità, sempre a portata di mano', voci:[
+    { ic:'✨', t:'Cosa c\'è di nuovo', d:'Ogni volta che l\'app si aggiorna, questa finestra ti mostra le funzioni nuove. Puoi rileggerle quando vuoi da ⚙︎ → Novità.' } ]},
+  { n:6, data:'2026-11-01', titolo:'Posizione da Google Maps', voci:[
+    { ic:'🗺️', t:'Incolla il punto da Google Maps', d:'Nella scheda dell\'appezzamento puoi incollare coordinate o link di Google Maps, anche quelli brevi del tasto Condividi, per localizzare il terreno.', perm:'struttura', cta:'Apri appezzamenti', vai:() => openSettings() } ]},
+  { n:5, data:'2026-11-01', titolo:'Notifiche e promemoria', voci:[
+    { ic:'🔔', t:'Notifiche sul telefono', d:'Gelate e piogge in arrivo, giorni buoni per trattare, lavori del giorno e, se gestisci le vendite, nuovi clienti e ordini. Anche ad app chiusa.', cta:'Attiva le notifiche',
+      vai:() => { openSettings(); setTimeout(() => $('#cardNotifiche')?.scrollIntoView({ behavior:'smooth', block:'center' }), 450); } },
+    { ic:'📌', t:'Promemoria dei lavori', d:'Programma i lavori da fare e, quando registri un trattamento, fattelo ricordare di nuovo dopo i giorni che vuoi.', cta:'Apri Lavori', vai:() => { S.tab = 'lavori'; render(); } },
+    { ic:'🗓️', t:'Date di carenza corrette', d:'La fine dei tempi di carenza risultava un giorno prima del dovuto: ora è esatta.' } ]},
+  { n:4, data:'2026-11-01', titolo:'Lavoro in squadra', voci:[
+    { ic:'👥', t:'Collaboratori', d:'Invita un manager, che gestisce tutto, o un agricoltore, che registra lavori e raccolte senza vedere conti e vendite.', perm:'team', cta:'Invita qualcuno', vai:() => openSettings() },
+    { ic:'🎓', t:'Guida su misura', d:'La guida iniziale ora mostra a ciascuno solo le funzioni che può usare.' } ]},
+  { n:3, data:'2026-11-01', titolo:'Vendita dell\'olio', voci:[
+    { ic:'🛒', t:'Il tuo negozio', d:'Mandi un link ai clienti, li autorizzi, prenotano l\'olio e tu decidi il prezzo su ogni ordine. L\'incasso finisce da solo nei Conti.', perm:'soldi', cta:'Apri Vendite', vai:() => { S.tab = 'vendite'; render(); } } ]},
+  { n:2, data:'2026-11-01', titolo:'Meteo e avvio veloce', voci:[
+    { ic:'🌤️', t:'Il meteo del tuo terreno', d:'Previsioni a 7 giorni per ogni appezzamento, con avvisi su gelo, pioggia e giorni adatti ai trattamenti.', cta:'Vedi il meteo', vai:() => { S.tab = 'home'; render(); setTimeout(() => $('#meteoCard')?.scrollIntoView({ behavior:'smooth', block:'center' }), 300); } },
+    { ic:'⚡', t:'Apertura immediata', d:'L\'app si apre subito con gli ultimi dati e si aggiorna da sola; risolto il blocco dopo qualche ora di inattività.' } ]},
+  { n:1, data:'2026-10-31', titolo:'QR code e indirizzi', voci:[
+    { ic:'🏷️', t:'Un QR per ogni pianta', d:'Stampa le etichette, appendile ai tronchi e inquadrale per aprire la scheda della pianta.', cta:'Stampa etichette', vai:() => formEtichette() },
+    { ic:'📍', t:'Indirizzo e catasto del lotto', d:'Via, comune, foglio e particella di ogni appezzamento, con il link per raggiungerlo.', perm:'struttura' } ]}
+];
+const ULTIMA_NOVITA = NOVITA[0].n;
+const novitaKey = () => 'uliveto:novita:' + S.user?.id;
+function novitaVista(){
+  let l = 0; try { l = +localStorage.getItem(novitaKey()) || 0; } catch(e){}
+  return Math.max(+(S.user?.user_metadata?.novita) || 0, l);
+}
+function segnaNovita(){
+  try { localStorage.setItem(novitaKey(), ULTIMA_NOVITA); } catch(e){}
+  if ((+(S.user?.user_metadata?.novita) || 0) < ULTIMA_NOVITA) {    // salvata nell'account: non ricompare su altri dispositivi
+    try { sb.auth.updateUser({ data:{ novita:ULTIMA_NOVITA } }).then(r => { if (r.data?.user) S.user = r.data.user; }).catch(() => {}); } catch(e){}
+  }
+}
+const novitaPerMe = (da = 0) => NOVITA.filter(r => r.n > da).map(r => ({ ...r, voci:r.voci.filter(v => !v.perm || puo(v.perm)) })).filter(r => r.voci.length);
+function novitaSeNuove(){
+  if (!S.user || modoCliente() || $('#novita')) return;
+  const vista = novitaVista();
+  let guidaVista = false; try { guidaVista = !!localStorage.getItem(guidaKey()); } catch(e){}
+  if (!vista && !guidaVista && !S._guidaVista) return segnaNovita();   // nuovo utente: c'è già la guida iniziale
+  const rel = novitaPerMe(vista || ULTIMA_NOVITA - 3);                 // chi non ha mai visto la finestra riceve le ultime 3
+  if (!rel.length) return segnaNovita();
+  setTimeout(() => { if (!$('#guida.open')) apriNovita(rel.slice(0, 3), true); }, 700);
+}
+let _novitaAperte = [];
+function apriNovita(rel, auto){
+  _novitaAperte = rel || novitaPerMe(0);
+  $('#novita')?.remove();
+  const el = document.createElement('div'); el.id = 'novita'; el.className = 'nv-ov'; el.setAttribute('role','dialog'); el.setAttribute('aria-label','Cosa c\'è di nuovo');
+  el.innerHTML = `<div class="nv">
+    <div class="nv-head"><div class="nv-spark"><span>✨</span></div><h2>${auto ? 'Cosa c\'è di nuovo' : 'Novità dell\'app'}</h2>
+      <div class="muted">${auto ? 'Dal tuo ultimo accesso' : 'Tutti gli aggiornamenti, dal più recente'}</div></div>
+    <div class="nv-body">${_novitaAperte.map((r, ri) => `<section class="nv-rel" style="animation-delay:${.12 + ri * .1}s">
+        <div class="nv-rt">${esc(r.titolo)}<span>${fdate(r.data)}</span></div>
+        ${r.voci.map((v, vi) => `<div class="nv-voce"><span class="nv-ic">${v.ic}</span><div><b>${esc(v.t)}</b><p>${esc(v.d)}</p>
+          ${v.vai ? `<button class="btn sm sec" onclick="novitaVai(${ri},${vi})">${esc(v.cta || 'Prova')} →</button>` : ''}</div></div>`).join('')}
+      </section>`).join('')}</div>
+    <div class="nv-foot"><button class="btn block" onclick="chiudiNovita()">${auto ? 'Ho capito' : 'Chiudi'}</button></div></div>`;
+  el.addEventListener('click', e => { if (e.target === el) chiudiNovita(); });
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('on'));
+  document.addEventListener('keydown', novitaTasti);
+}
+function novitaTasti(e){ if (e.key === 'Escape') chiudiNovita(); }
+function chiudiNovita(){
+  segnaNovita(); document.removeEventListener('keydown', novitaTasti);
+  const el = $('#novita'); if (!el) return;
+  el.classList.remove('on'); setTimeout(() => el.remove(), 250);
+}
+function novitaVai(ri, vi){ const v = _novitaAperte[ri]?.voci[vi]; chiudiNovita(); closeSheet(); if (v?.vai) setTimeout(v.vai, 260); }
+
 /* ===== Guida iniziale ===== */
 /* Schermate della guida: [icona, titolo, testo, dove, permesso richiesto]. Testi diversi per titolare, manager e agricoltore. */
 function guidaSchermate(){
@@ -1934,11 +2033,11 @@ async function avvia(){
     Object.assign(S, c); S._daCache = true; S._caricato = true; render(); apriDaLink(); guidaSeNuova();
     const prima = S.owner; await aggiornaAccessi();
     if (S.owner !== prima) { svuotaStato(); showSplash(); }
-    refresh(); return;
+    refresh(); novitaSeNuove(); return;
   }
   showSplash(); await aggiornaAccessi(); await refresh();
   if (!S._caricato) splashError('Non riesco a caricare i dati. Controlla la connessione.');
-  else guidaSeNuova();
+  else { guidaSeNuova(); novitaSeNuove(); }
 }
 </script>
 </body>
