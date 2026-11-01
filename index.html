@@ -11,9 +11,8 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-180.png">
 <title>Il mio Uliveto</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://dhtlqdlhglsbguxokpxx.supabase.co" crossorigin>
 <style>
 :root{
   --bg:#f6f4ec; --card:#ffffff; --ink:#26291c; --muted:#6f735f; --line:#e3e0d2;
@@ -239,6 +238,8 @@ nav.tabs button.on .ic{animation:tab-pop .35s cubic-bezier(.3,1.6,.5,1)}
 <div id="sheet"><div class="panel"><div class="grab"></div><div id="sheetBody"></div></div></div>
 <div id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <script>
 /* ===== Configurazione Supabase (chiave pubblica: i dati sono protetti dalle policy RLS) ===== */
 const SUPABASE_URL = 'https://dhtlqdlhglsbguxokpxx.supabase.co';
@@ -255,7 +256,7 @@ function showSplash(){
 }
 function hideSplash(){
   const s = document.getElementById('splash'); if (!s || s.classList.contains('out')) return;
-  const wait = Math.max(0, 1900 - (Date.now() - SPLASH_T0)); // lascia finire l'animazione al primo avvio
+  const wait = S._daCache ? 0 : Math.max(0, 1000 - (Date.now() - SPLASH_T0));
   setTimeout(()=>{ s.classList.add('out'); clearInterval(splashTimer); }, wait);
 }
 function splashError(t){ const s = document.getElementById('splash'); clearInterval(splashTimer); s.classList.remove('out'); s.classList.add('error'); splashMsg(t); }
@@ -323,7 +324,14 @@ async function loadAll(){
   [S.appezzamenti,S.piante,S.interventi,S.raccolte,S.moliture,S.movimenti] = res.map(r=>r.data);
   S.appezzamenti.sort((a,b)=>a.nome.localeCompare(b.nome));
   S.piante.sort((a,b)=>a.codice.localeCompare(b.codice,'it',{numeric:true}));
+  scriviCache();
 }
+/* Copia locale dei dati: all'apertura l'app mostra subito l'ultima versione e intanto aggiorna */
+const CACHE_TAB = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti'];
+const cacheKey = () => 'uliveto:dati:' + S.user?.id;
+function scriviCache(){ try { localStorage.setItem(cacheKey(), JSON.stringify(Object.fromEntries(CACHE_TAB.map(t=>[t,S[t]])))); } catch(e){} }
+function leggiCache(){ try { const c = JSON.parse(localStorage.getItem(cacheKey()) || 'null'); return c && CACHE_TAB.every(t=>Array.isArray(c[t])) ? c : null; } catch(e){ return null; } }
+function svuotaCache(){ try { Object.keys(localStorage).filter(k=>k.startsWith('uliveto:dati:')).forEach(k=>localStorage.removeItem(k)); } catch(e){} }
 async function save(table, values, id){
   const q = id ? sb.from(table).update(values).eq('id',id) : sb.from(table).insert(values);
   const { data, error } = await q.select().single();
@@ -511,7 +519,18 @@ function viewMappa(){
       </div>
       <div class="muted" style="margin-top:8px">Dopo ogni pianta posizionata l'app passa da sola alla successiva. Il GPS del telefono può sbagliare di qualche metro: per alberi vicini è più preciso toccare la chioma sulla vista satellite.</div></div>`
     : '<div class="empty">Aggiungi prima le piante, poi posizionale sulla mappa.</div>'}`;
-  initMap(con, colore);
+  caricaLeaflet().then(()=>{ if ($('#map')) initMap(con, colore); })
+    .catch(()=>{ const m = $('#map'); if (m) m.innerHTML = '<div class="empty">Mappa non disponibile: controlla la connessione.</div>'; });
+}
+let _leaflet = null;
+function caricaLeaflet(){
+  if (window.L) return Promise.resolve();
+  return _leaflet ||= new Promise((ok, ko) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+    s.onload = ok; s.onerror = () => { _leaflet = null; s.remove(); ko(); };
+    document.head.appendChild(s);
+  });
 }
 function initMap(con, colore){
   if (!window.L){ $('#map').innerHTML = '<div class="empty">Mappa non disponibile: libreria non caricata.</div>'; return; }
@@ -1033,7 +1052,7 @@ async function esporta(){
   }
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json],{type:'application/json'})); a.download = filename; a.click();
 }
-async function logout(){ await sb.auth.signOut(); closeSheet(); }
+async function logout(){ svuotaCache(); await sb.auth.signOut(); closeSheet(); }
 
 /* ===== Autenticazione ===== */
 let authMode = 'login';
@@ -1068,14 +1087,23 @@ function nuovaPassword(){
     onSubmit: async v=>{ if ((v.password||'').length < 6) throw new Error('Almeno 6 caratteri'); const { error } = await sb.auth.updateUser({ password:v.password }); if (error) throw error; } });
 }
 
-sb.auth.onAuthStateChange(async (_e, session) => {
+// Il callback resta sincrono: le chiamate a Supabase partono dopo, con setTimeout,
+// altrimenti durante il rinnovo della sessione si bloccano a vicenda.
+sb.auth.onAuthStateChange((_e, session) => {
   if (_e === 'PASSWORD_RECOVERY') setTimeout(nuovaPassword, 400);
   const u = session?.user || null;
   if (S._init && u?.id === S.user?.id) return;
   S._init = true; S.user = u;
-  if (u) { showSplash(); S._lastTab = null; await refresh(); if (!S._caricato) splashError('Non riesco a caricare i dati. Controlla la connessione.'); }
-  else render();
+  setTimeout(avvia, 0);
 });
+async function avvia(){
+  S._lastTab = null;
+  if (!S.user) { CACHE_TAB.forEach(t=>S[t]=[]); S._caricato = false; S._daCache = false; return render(); }
+  const c = leggiCache();
+  if (c) { Object.assign(S, c); S._daCache = true; S._caricato = true; render(); apriDaLink(); refresh(); return; }
+  showSplash(); await refresh();
+  if (!S._caricato) splashError('Non riesco a caricare i dati. Controlla la connessione.');
+}
 </script>
 </body>
 </html>
