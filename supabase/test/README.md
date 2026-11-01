@@ -4,7 +4,7 @@ Script che simulano utenti diversi (titolare, manager, agricoltore, clienti, est
 e verificano le regole di accesso. Ogni riga dell'esito inizia con `OK` o `ERRORE`.
 
 Vanno eseguiti su un database **di prova** (PostgreSQL 15+) dopo aver applicato, in ordine,
-`00_impalcatura_auth.sql`, `schema.sql`, `vendite.sql` e `collaboratori.sql`. L'impalcatura riproduce `00_impalcatura_auth.sql`, una piccola impalcatura che riproduce
+`00_impalcatura_auth.sql`, `schema.sql`, `vendite.sql` e `collaboratori.sql`. Il primo file riproduce
 lo schema `auth` di Supabase (tabella `auth.users`, funzioni `auth.uid()` e `auth.jwt()`,
 ruoli `anon` e `authenticated`).
 
