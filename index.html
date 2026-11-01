@@ -210,6 +210,31 @@ nav.tabs button.on .ic{animation:tab-pop .35s cubic-bezier(.3,1.6,.5,1)}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;animation-delay:0s!important;transition-duration:.01ms!important}
   .splash .branch{stroke-dashoffset:0}.splash .leaf{transform:none}.splash .olive,.splash .name{opacity:1}
 }
+/* guida iniziale */
+#guida{position:fixed;inset:0;z-index:40;background:var(--bg);display:none;flex-direction:column}
+#guida.open{display:flex;animation:g-in .35s ease}
+.g-skip{position:absolute;top:calc(10px + env(safe-area-inset-top));right:12px;border:0;background:none;color:var(--muted);font-weight:600;font-size:15px;padding:10px;z-index:2;cursor:pointer}
+.g-track{flex:1;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.g-track::-webkit-scrollbar{display:none}
+.g-slide{flex:0 0 100%;scroll-snap-align:center;scroll-snap-stop:always;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:48px 28px 8px;box-sizing:border-box}
+.g-ill{width:172px;height:172px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--gold-soft),var(--olive-soft) 70%);display:grid;place-items:center;margin-bottom:30px;position:relative}
+.g-ill::after{content:"";position:absolute;inset:-10px;border-radius:50%;border:2px dashed var(--olive-soft);animation:g-spin 30s linear infinite}
+.g-ill span{font-size:78px;line-height:1;display:block}
+.g-slide.on .g-ill span{animation:g-pop .6s cubic-bezier(.3,1.6,.5,1) both, g-float 3.2s ease-in-out .6s infinite}
+.g-slide h2{font-size:24px;margin:0 0 10px;letter-spacing:-.4px;line-height:1.2}
+.g-slide p{margin:0;color:var(--muted);font-size:15.5px;line-height:1.55;max-width:340px}
+.g-slide.on h2,.g-slide.on p,.g-slide.on .g-dove{animation:rise .5s cubic-bezier(.2,.8,.3,1) both}
+.g-slide.on p{animation-delay:.08s}.g-slide.on .g-dove{animation-delay:.16s}
+.g-dove{margin-top:18px;font-size:13px;background:var(--olive-soft);color:var(--olive);padding:6px 13px;border-radius:99px}
+.g-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 22px calc(22px + env(safe-area-inset-bottom));max-width:560px;width:100%;margin:0 auto;box-sizing:border-box}
+.g-dots{display:flex;gap:6px;flex-wrap:wrap}
+.g-dots i{width:7px;height:7px;border-radius:99px;background:var(--line);transition:width .25s, background .25s;cursor:pointer}
+.g-dots i.on{width:22px;background:var(--olive)}
+.g-foot .btn{min-width:124px}
+@keyframes g-in{from{opacity:0;transform:scale(.98)}to{opacity:1;transform:none}}
+@keyframes g-pop{0%{transform:scale(.3) rotate(-14deg);opacity:0}100%{transform:none;opacity:1}}
+@keyframes g-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes g-spin{to{transform:rotate(360deg)}}
 /* auth */
 .auth{max-width:380px;margin:12vh auto 0;padding:0 20px}
 .auth .logo{font-size:44px;text-align:center}
@@ -1037,6 +1062,7 @@ function openSettings(){
         ${indirizzoLotto(a)?`<div class="s" style="white-space:normal">📍 ${esc(indirizzoLotto(a))}</div>`:''}</div>
         ${navigaLotto(a)?`<a class="btn sm sec" href="${navigaLotto(a)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Vai ↗</a>`:'<div class="muted">›</div>'}</div>`).join('')||'<div class="empty">Nessun appezzamento.</div>'}</div>
     <div class="card"><h2>Dati</h2>
+      <div class="row tap" onclick="closeSheet();apriGuida()"><div class="main"><div class="t">Guida dell'app</div><div class="s">Rivedi le funzioni principali</div></div><div class="muted">💡</div></div>
       <div class="row tap" onclick="formEtichette()"><div class="main"><div class="t">Stampa etichette QR</div><div class="s">Un QR per ogni pianta, da appendere al tronco</div></div><div class="muted">🏷️</div></div>
       <div class="row tap" onclick="esporta()"><div class="main"><div class="t">Esporta tutti i dati (JSON)</div><div class="s">Backup completo</div></div><div class="muted">↓</div></div>
       <div class="row"><div class="main"><div class="t">Account</div><div class="s">${esc(S.user.email)}</div></div><button class="btn sm danger" onclick="logout()">Esci</button></div></div>`);
@@ -1053,6 +1079,51 @@ async function esporta(){
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json],{type:'application/json'})); a.download = filename; a.click();
 }
 async function logout(){ svuotaCache(); await sb.auth.signOut(); closeSheet(); }
+
+/* ===== Guida iniziale ===== */
+const GUIDA = [
+  ['🫒','Benvenuto in Il mio Uliveto','Tutto il ciclo del tuo uliveto in un\'unica app: piante, lavori, raccolta, olio e conti. Ecco in breve cosa puoi fare.',null],
+  ['🌳','Ogni pianta ha la sua scheda','Crea le piante anche in blocco (es. da A-1 ad A-80) e segui di ogni albero stato, varietà, produzione e storico dei lavori.','Piante'],
+  ['🏷️','Un QR code per ogni albero','Stampa le etichette e appendile ai tronchi: inquadrandole con la fotocamera si apre subito la scheda di quella pianta.','Piante → 🏷️ QR'],
+  ['🗺️','Il tuo uliveto sulla mappa','Posiziona le piante con il GPS o toccando la chioma sulla foto satellitare, e colorale per stato di salute o produzione.','Piante → Mappa'],
+  ['🧪','Lavori e trattamenti','Registra potature, concimazioni e trattamenti. Con i giorni di carenza l\'app ti avvisa finché non è il momento di raccogliere.','Lavori'],
+  ['🧺','Raccolta e frantoio','Pesa le olive pianta per pianta e registra la molitura: resa e costo al litro dell\'olio si calcolano da soli.','Raccolta'],
+  ['🌤️','Il meteo del tuo terreno','Previsioni a 7 giorni dove si trova l\'appezzamento, con avvisi su gelate, piogge e giorni adatti ai trattamenti.','Annata'],
+  ['💶','I conti dell\'annata','Spese ed entrate per categoria, con il saldo dell\'anno: i costi di lavori e frantoio entrano in automatico.','Conti'],
+  ['🚀','Iniziamo!','Primo passo: crea l\'appezzamento con l\'indirizzo del terreno, poi aggiungi le piante. Consiglio: aggiungi l\'app alla schermata Home dal menu del browser.',null]
+];
+const guidaKey = () => 'uliveto:guida:' + S.user?.id;
+function apriGuida(){
+  let g = $('#guida'); if (!g) { g = document.createElement('div'); g.id = 'guida'; g.setAttribute('role','dialog'); g.setAttribute('aria-label','Guida dell\'app'); document.body.appendChild(g); }
+  g.innerHTML = `<button class="g-skip" onclick="chiudiGuida()">Salta</button>
+    <div class="g-track" id="gTrack">${GUIDA.map(([e,t,d,dove])=>`<section class="g-slide"><div class="g-ill"><span>${e}</span></div><h2>${esc(t)}</h2><p>${esc(d)}</p>${dove?`<div class="g-dove">Dove: <b>${esc(dove)}</b></div>`:''}</section>`).join('')}</div>
+    <div class="g-foot"><div class="g-dots">${GUIDA.map((_,i)=>`<i onclick="guidaVai(${i})" aria-label="Schermata ${i+1}"></i>`).join('')}</div>
+      <button class="btn" id="gNext" onclick="guidaAvanti()">Avanti</button></div>`;
+  g.classList.add('open');
+  const tr = $('#gTrack'); tr.addEventListener('scroll', guidaAgg, { passive:true }); guidaAgg();
+  document.addEventListener('keydown', guidaTasti);
+}
+function guidaIdx(){ const tr = $('#gTrack'); return tr ? Math.round(tr.scrollLeft / tr.clientWidth) : 0; }
+function guidaAgg(){
+  const i = guidaIdx();
+  document.querySelectorAll('.g-dots i').forEach((d,k)=>d.classList.toggle('on', k===i));
+  document.querySelectorAll('.g-slide').forEach((sl,k)=>sl.classList.toggle('on', k===i));
+  const b = $('#gNext'); if (b) b.textContent = i === GUIDA.length-1 ? (S.appezzamenti.length ? 'Inizia' : 'Crea appezzamento') : 'Avanti';
+}
+function guidaVai(i){ const tr = $('#gTrack'); tr.scrollTo({ left: i * tr.clientWidth, behavior:'smooth' }); }
+function guidaAvanti(){ const i = guidaIdx(); if (i >= GUIDA.length-1) return chiudiGuida(true); guidaVai(i+1); }
+function guidaTasti(e){ if (!$('#guida.open')) return; if (e.key==='ArrowRight') guidaAvanti(); if (e.key==='ArrowLeft') guidaVai(Math.max(0, guidaIdx()-1)); if (e.key==='Escape') chiudiGuida(); }
+function chiudiGuida(inizia){
+  try { localStorage.setItem(guidaKey(), '1'); } catch(e){}
+  S._guidaVista = true; document.removeEventListener('keydown', guidaTasti);
+  $('#guida')?.classList.remove('open');
+  if (inizia && !S.appezzamenti.length) setTimeout(formAppezzamento, 250);
+}
+function guidaSeNuova(){
+  if (!S.user || S._guidaVista) return;
+  let vista = false; try { vista = !!localStorage.getItem(guidaKey()); } catch(e){}
+  if (!vista) setTimeout(apriGuida, 350);
+}
 
 /* ===== Autenticazione ===== */
 let authMode = 'login';
@@ -1100,9 +1171,10 @@ async function avvia(){
   S._lastTab = null;
   if (!S.user) { CACHE_TAB.forEach(t=>S[t]=[]); S._caricato = false; S._daCache = false; return render(); }
   const c = leggiCache();
-  if (c) { Object.assign(S, c); S._daCache = true; S._caricato = true; render(); apriDaLink(); refresh(); return; }
+  if (c) { Object.assign(S, c); S._daCache = true; S._caricato = true; render(); apriDaLink(); guidaSeNuova(); refresh(); return; }
   showSplash(); await refresh();
   if (!S._caricato) splashError('Non riesco a caricare i dati. Controlla la connessione.');
+  else guidaSeNuova();
 }
 </script>
 </body>
