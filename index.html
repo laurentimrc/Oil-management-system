@@ -1158,15 +1158,16 @@ async function avviaCliente(){
 }
 async function caricaCliente(){
   const n = C.negozio.id, uid = S.user.id;
-  const [cl, fo, or, ne] = await Promise.all([
+  const [cl, fo, or, ne, ge] = await Promise.all([
     sb.from('clienti').select('*').eq('negozio_id', n).eq('user_id', uid).maybeSingle(),
     sb.from('formati').select('*').eq('negozio_id', n).eq('attivo', true).order('ordine').order('litri'),
     sb.from('ordini').select('*, ordine_righe(*)').eq('negozio_id', n).eq('user_id', uid).order('created_at', { ascending:false }),
-    sb.from('negozi').select('owner_id, note_consegna, attivo').eq('id', n).maybeSingle()
+    sb.from('negozi').select('owner_id, note_consegna, attivo').eq('id', n).maybeSingle(),
+    sb.rpc('e_gestore', { p_negozio: n })
   ]);
   for (const r of [cl, fo, or, ne]) if (r.error) throw r.error;
   C.cliente = cl.data; C.formati = fo.data || []; C.ordini = or.data || [];
-  C.owner = ne.data?.owner_id === uid; C.noteConsegna = ne.data?.note_consegna || '';
+  C.owner = ne.data?.owner_id === uid || ge.data === true; C.titolare = ne.data?.owner_id === uid; C.noteConsegna = ne.data?.note_consegna || '';
   C.disp = null;
   if (C.cliente?.stato === 'approvato' || C.owner) { const d = await sb.rpc('disponibilita', { p_negozio: n }); if (!d.error) C.disp = d.data; }
 }
@@ -1180,7 +1181,7 @@ function renderCliente(){
   setTimeout(()=>$('main')?.classList.remove('enter'), 900);
   const v = $('#view');
   if (!n) { v.innerHTML = `<div class="card"><h2>🔎 Negozio non trovato</h2><p class="muted">Il link che hai aperto non corrisponde a nessun produttore. Controlla di averlo copiato per intero, oppure chiedilo di nuovo a chi te l'ha mandato.</p></div>`; return; }
-  if (C.owner) { v.innerHTML = `<div class="card"><h2>👀 Questo è il tuo negozio</h2><p class="muted" style="margin-top:0">Così i clienti vedono la pagina di prenotazione. Per gestire richieste e ordini usa la sezione Vendite.</p>
+  if (C.owner) { v.innerHTML = `<div class="card"><h2>👀 ${C.titolare ? 'Questo è il tuo negozio' : 'Gestisci questo negozio'}</h2><p class="muted" style="margin-top:0">${C.titolare ? '' : 'Hai accesso come manager, quindi non devi chiedere l\'autorizzazione. '}Questo è il link che ricevono i clienti per prenotare. Per gestire richieste e ordini usa la sezione Vendite.</p>
       <a class="btn block" style="display:block;text-align:center;text-decoration:none" href="${QR_BASE}">Torna alla gestione</a></div>`; return; }
   const c = C.cliente;
   if (!c) return formRichiestaCliente(v);
