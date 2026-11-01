@@ -236,6 +236,32 @@ nav.tabs button.on .ic{animation:tab-pop .35s cubic-bezier(.3,1.6,.5,1)}
 @keyframes g-pop{0%{transform:scale(.3) rotate(-14deg);opacity:0}100%{transform:none;opacity:1}}
 @keyframes g-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
 @keyframes g-spin{to{transform:rotate(360deg)}}
+/* vendite e area clienti */
+nav.tabs button .ic{position:relative}
+.nb{position:absolute;top:-5px;right:-11px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;background:var(--red);color:#fff;font:700 10.5px/17px -apple-system,sans-serif;font-style:normal;text-align:center}
+.st{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.st-richiesta,.st-in_attesa{background:var(--gold-soft);color:var(--gold)}
+.st-confermato,.st-approvato{background:var(--olive-soft);color:var(--olive)}
+.st-in_consegna{background:#dfeaf3;color:var(--blue)}
+.st-consegnato{background:var(--olive);color:#fff}
+.st-annullato,.st-rifiutato,.st-bloccato{background:var(--line);color:var(--muted)}
+.shoplink{display:flex;gap:8px;align-items:center;background:var(--olive-soft);border-radius:10px;padding:8px 10px;font-size:12.5px;word-break:break-all;margin-bottom:10px}
+.prod{display:flex;align-items:center;gap:10px;padding:12px 0;border-top:1px solid var(--line)}
+.prod:first-of-type{border-top:0}
+.prod .main{flex:1;min-width:0}
+.step{display:flex;align-items:center;gap:4px}
+.step button{width:36px;height:36px;border-radius:10px;border:0;background:var(--olive-soft);color:var(--olive);font-size:20px;font-weight:700;cursor:pointer}
+.step b{min-width:26px;text-align:center;font-size:17px}
+.riepilogo{background:var(--olive-soft);border-radius:12px;padding:10px 12px;margin:10px 0;font-size:14px}
+.righe-ord{width:100%;border-collapse:collapse;font-size:14px;margin:4px 0 8px}
+.righe-ord td{padding:7px 0;border-top:1px solid var(--line);vertical-align:middle}
+.righe-ord input{width:84px;border:1px solid var(--line);background:var(--card);border-radius:8px;padding:7px 8px;text-align:right}
+.tot{display:flex;justify-content:space-between;font-weight:700;font-size:16px;padding:8px 0;border-top:2px solid var(--line)}
+.ordcard{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:10px;background:var(--card)}
+.ordcard .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.privacy{font-size:12px;color:var(--muted);background:var(--bg);border-radius:10px;padding:10px;margin:4px 0 10px;line-height:1.45}
+label.chk{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;margin-bottom:12px}
+label.chk input{margin-top:3px;width:18px;height:18px}
 /* auth */
 .auth{max-width:380px;margin:12vh auto 0;padding:0 20px}
 .auth .logo{font-size:44px;text-align:center}
@@ -350,10 +376,11 @@ async function loadAll(){
   [S.appezzamenti,S.piante,S.interventi,S.raccolte,S.moliture,S.movimenti] = res.map(r=>r.data);
   S.appezzamenti.sort((a,b)=>a.nome.localeCompare(b.nome));
   S.piante.sort((a,b)=>a.codice.localeCompare(b.codice,'it',{numeric:true}));
+  await loadVendite();
   scriviCache();
 }
 /* Copia locale dei dati: all'apertura l'app mostra subito l'ultima versione e intanto aggiorna */
-const CACHE_TAB = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti'];
+const CACHE_TAB = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti','negozi','formati','clienti','ordini'];
 const cacheKey = () => 'uliveto:dati:' + S.user?.id;
 function scriviCache(){ try { localStorage.setItem(cacheKey(), JSON.stringify(Object.fromEntries(CACHE_TAB.map(t=>[t,S[t]])))); } catch(e){} }
 function leggiCache(){ try { const c = JSON.parse(localStorage.getItem(cacheKey()) || 'null'); return c && CACHE_TAB.every(t=>Array.isArray(c[t])) ? c : null; } catch(e){ return null; } }
@@ -411,6 +438,7 @@ function targetLabel(i){
 function render(){
   hideSplash();
   if (!S.user) return renderAuth();
+  if (modoCliente()) return renderCliente();
   const nuovaVista = S._lastTab !== S.tab; S._lastTab = S.tab;
   const ys = anni(); if (!ys.includes(S.year)) S.year = ys[0];
   $('#app').innerHTML = `
@@ -422,10 +450,11 @@ function render(){
     <main id="view"></main>
     ${['home','piante','lavori'].includes(S.tab)||S.tab==='raccolta'||S.tab==='conti' ? `<button class="fab" onclick="fab()" aria-label="Aggiungi">+</button>`:''}
     <nav class="tabs">
-      ${[['home','🏡','Annata'],['piante','🌳','Piante'],['lavori','🛠️','Lavori'],['raccolta','🧺','Raccolta'],['conti','💶','Conti']]
-        .map(([k,ic,l])=>`<button class="${S.tab===k?'on':''}" onclick="S.tab='${k}';render();scrollTo(0,0)"><span class="ic">${ic}</span>${l}</button>`).join('')}
+      ${[['home','🏡','Annata'],['piante','🌳','Piante'],['lavori','🛠️','Lavori'],['raccolta','🧺','Raccolta'],['vendite','🛒','Vendite'],['conti','💶','Conti']]
+        .map(([k,ic,l])=>{const b = k==='vendite' ? daGestire() : 0;
+          return `<button class="${S.tab===k?'on':''}" onclick="S.tab='${k}';render();scrollTo(0,0)"><span class="ic">${ic}${b?`<em class="nb">${b}</em>`:''}</span>${l}</button>`}).join('')}
     </nav>`;
-  ({home:viewHome,piante:viewPiante,lavori:viewLavori,raccolta:viewRaccolta,conti:viewConti})[S.tab]();
+  ({home:viewHome,piante:viewPiante,lavori:viewLavori,raccolta:viewRaccolta,vendite:viewVendite,conti:viewConti})[S.tab]();
   if (nuovaVista) {
     const m = $('main'); m.classList.add('enter'); setTimeout(()=>m.classList.remove('enter'), 900);
     contaNumeri();
@@ -1083,6 +1112,361 @@ async function esporta(){
 }
 async function logout(){ svuotaCache(); await sb.auth.signOut(); closeSheet(); }
 
+/* ===== Vendita olio: parte comune ===== */
+const SHOP_PARAM = new URLSearchParams(location.search).get('olio');
+const STATI_ORD = { richiesta:'Da confermare', confermato:'Confermato', in_consegna:'In consegna', consegnato:'Consegnato', annullato:'Annullato' };
+const STATI_CLI = { in_attesa:'In attesa', approvato:'Autorizzato', rifiutato:'Rifiutato', bloccato:'Bloccato' };
+const badgeSt = (k, lab) => `<span class="st st-${k}">${esc(lab[k] || k)}</span>`;
+const litriOrdine = o => sum(o.ordine_righe || [], r => r.litri * r.quantita);
+const shopUrl = slug => QR_BASE + '?olio=' + encodeURIComponent(slug);
+const eurOpt = n => n == null ? '' : eur(n);
+const indCompleto = x => [x.indirizzo, [x.cap, x.comune].filter(Boolean).join(' ') + (x.provincia ? ` (${x.provincia})` : '')].filter(v => v && v.trim()).join(', ');
+const mapsDir = x => 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(indCompleto(x));
+function modoCliente(){ return !!SHOP_PARAM || S.user?.user_metadata?.ruolo === 'cliente'; }
+function slugCliente(){
+  let mem = null; try { mem = localStorage.getItem('uliveto:negozio'); } catch(e){}
+  return (SHOP_PARAM || S.user?.user_metadata?.negozio || mem || '').toLowerCase();
+}
+function slugDa(t){ return (t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40) || 'uliveto'; }
+
+/* ===== Area clienti ===== */
+const C = { negozio:null, cliente:null, formati:[], ordini:[], disp:null, owner:false, vista:'ordina', qty:{} };
+async function avviaCliente(){
+  const slug = slugCliente();
+  try { if (slug) localStorage.setItem('uliveto:negozio', slug); } catch(e){}
+  C.negozio = null;
+  if (slug) {
+    const { data, error } = await sb.rpc('negozio_pubblico', { p_slug: slug });
+    if (error) throw error;
+    C.negozio = data?.[0] || null;
+  }
+  if (C.negozio) await caricaCliente();
+  renderCliente();
+}
+async function caricaCliente(){
+  const n = C.negozio.id, uid = S.user.id;
+  const [cl, fo, or, ne] = await Promise.all([
+    sb.from('clienti').select('*').eq('negozio_id', n).eq('user_id', uid).maybeSingle(),
+    sb.from('formati').select('*').eq('negozio_id', n).eq('attivo', true).order('ordine').order('litri'),
+    sb.from('ordini').select('*, ordine_righe(*)').eq('negozio_id', n).eq('user_id', uid).order('created_at', { ascending:false }),
+    sb.from('negozi').select('owner_id, note_consegna, attivo').eq('id', n).maybeSingle()
+  ]);
+  for (const r of [cl, fo, or, ne]) if (r.error) throw r.error;
+  C.cliente = cl.data; C.formati = fo.data || []; C.ordini = or.data || [];
+  C.owner = ne.data?.owner_id === uid; C.noteConsegna = ne.data?.note_consegna || '';
+  C.disp = null;
+  if (C.cliente?.stato === 'approvato' || C.owner) { const d = await sb.rpc('disponibilita', { p_negozio: n }); if (!d.error) C.disp = d.data; }
+}
+function renderCliente(){
+  hideSplash();
+  const n = C.negozio;
+  $('#app').innerHTML = `
+    <header><h1>🫒 <span>${esc(n?.nome || 'Prenota l\'olio')}</span></h1>
+      <button class="btn sm sec" onclick="logout()">Esci</button></header>
+    <main id="view" class="enter"></main>`;
+  setTimeout(()=>$('main')?.classList.remove('enter'), 900);
+  const v = $('#view');
+  if (!n) { v.innerHTML = `<div class="card"><h2>🔎 Negozio non trovato</h2><p class="muted">Il link che hai aperto non corrisponde a nessun produttore. Controlla di averlo copiato per intero, oppure chiedilo di nuovo a chi te l'ha mandato.</p></div>`; return; }
+  if (C.owner) { v.innerHTML = `<div class="card"><h2>👀 Questo è il tuo negozio</h2><p class="muted" style="margin-top:0">Così i clienti vedono la pagina di prenotazione. Per gestire richieste e ordini usa la sezione Vendite.</p>
+      <a class="btn block" style="display:block;text-align:center;text-decoration:none" href="${QR_BASE}">Torna alla gestione</a></div>`; return; }
+  const c = C.cliente;
+  if (!c) return formRichiestaCliente(v);
+  if (c.stato === 'in_attesa') {
+    v.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:46px">⏳</div><h2 style="justify-content:center">Richiesta inviata</h2>
+      <p class="muted">Il produttore deve autorizzarti prima che tu possa prenotare. Riapri questa pagina più tardi: appena sarai autorizzato vedrai il listino.</p>
+      <button class="btn sec" onclick="caricaCliente().then(renderCliente)">Controlla di nuovo</button></div>
+      <div class="card"><h2>I tuoi dati</h2><div class="muted">${esc(c.nome)}${c.telefono?' · '+esc(c.telefono):''}<br>📍 ${esc(indCompleto(c))}</div>
+      <div class="actions"><button class="btn sec" onclick="formRichiestaCliente($('#view'))">Modifica i dati</button></div></div>`;
+    return;
+  }
+  if (c.stato !== 'approvato') {
+    v.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:46px">🚫</div><h2 style="justify-content:center">Prenotazioni non disponibili</h2>
+      <p class="muted">Al momento non puoi prenotare da questo produttore. Per informazioni contattalo direttamente.</p></div>`;
+    return;
+  }
+  const aperti = C.ordini.filter(o => !['consegnato','annullato'].includes(o.stato)).length;
+  v.innerHTML = `<div class="seg"><button class="${C.vista==='ordina'?'on':''}" onclick="C.vista='ordina';renderCliente()">🛒 Prenota</button>
+      <button class="${C.vista==='ordini'?'on':''}" onclick="C.vista='ordini';renderCliente()">📦 I miei ordini${aperti?` (${aperti})`:''}</button></div><div id="cv"></div>`;
+  C.vista === 'ordina' ? viewPrenota() : viewMieiOrdini();
+}
+function formRichiestaCliente(v){
+  const c = C.cliente || {};
+  v.innerHTML = `<div class="card"><h2>👋 Chiedi di poter prenotare</h2>
+    <p class="muted" style="margin-top:0">${esc(C.negozio.descrizione || '')} Inserisci i tuoi dati: il produttore li userà per autorizzarti e per consegnarti l'olio.</p>
+    <form id="frmCli">
+      <label class="f"><span>Nome e cognome</span><input name="nome" required value="${esc(c.nome || '')}" autocomplete="name"></label>
+      <label class="f"><span>Telefono</span><input name="telefono" type="tel" value="${esc(c.telefono || '')}" autocomplete="tel"></label>
+      <label class="f"><span>Indirizzo di consegna</span><input name="indirizzo" required value="${esc(c.indirizzo || '')}" placeholder="Via e numero civico" autocomplete="street-address"></label>
+      <div class="grid2"><label class="f"><span>Comune</span><input name="comune" required value="${esc(c.comune || '')}" autocomplete="address-level2"></label>
+        <label class="f"><span>CAP</span><input name="cap" value="${esc(c.cap || '')}" inputmode="numeric" autocomplete="postal-code"></label></div>
+      <div class="grid2"><label class="f"><span>Provincia</span><input name="provincia" value="${esc(c.provincia || '')}" maxlength="2" placeholder="es. MI"></label>
+        <label class="f"><span>Citofono, piano…</span><input name="note_indirizzo" value="${esc(c.note_indirizzo || '')}"></label></div>
+      <div class="privacy"><b>Informativa privacy (sintesi).</b> I dati inseriti (nome, email, telefono, indirizzo) sono trattati dal produttore titolare di questo negozio al solo scopo di gestire le tue prenotazioni e consegnare l'olio. Non sono ceduti a terzi e sono conservati su server nell'Unione Europea. Puoi chiederne in ogni momento la modifica o la cancellazione contattando il produttore.</div>
+      <label class="chk"><input type="checkbox" name="privacy" required ${c.privacy_at?'checked':''}> Ho letto l'informativa e acconsento al trattamento dei miei dati per gestire le prenotazioni.</label>
+      <button class="btn block" type="submit">${C.cliente ? 'Salva i dati' : 'Invia la richiesta'}</button>
+    </form></div>`;
+  $('#frmCli').onsubmit = async e => {
+    e.preventDefault(); const f = new FormData(e.target), b = e.target.querySelector('[type=submit]'); b.disabled = true;
+    const { error } = await sb.rpc('richiedi_accesso', { p_negozio:C.negozio.id, p_nome:f.get('nome'), p_telefono:f.get('telefono'), p_indirizzo:f.get('indirizzo'),
+      p_comune:f.get('comune'), p_cap:f.get('cap'), p_provincia:f.get('provincia'), p_note_indirizzo:f.get('note_indirizzo') });
+    if (error) { b.disabled = false; return fail(error); }
+    toast(C.cliente ? 'Dati aggiornati ✓' : 'Richiesta inviata ✓'); await caricaCliente(); renderCliente();
+  };
+}
+function viewPrenota(){
+  const v = $('#cv'), c = C.cliente;
+  if (!C.negozio.attivo) { v.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:42px">🔒</div><h2 style="justify-content:center">Prenotazioni chiuse</h2><p class="muted">Il produttore ha chiuso le prenotazioni per ora. Riprova più avanti.</p></div>`; return; }
+  if (!C.formati.length) { v.innerHTML = `<div class="card"><div class="empty">Il listino non è ancora pronto. Riprova più tardi.</div></div>`; return; }
+  const litri = sum(C.formati, f => f.litri * (C.qty[f.id] || 0));
+  const conPrezzo = C.formati.every(f => !(C.qty[f.id] > 0) || f.prezzo != null);
+  const stima = sum(C.formati, f => (f.prezzo || 0) * (C.qty[f.id] || 0));
+  const oltre = C.disp != null && litri > C.disp;
+  v.innerHTML = `
+    ${C.disp != null ? `<div class="card" style="padding:10px 14px"><b>${C.disp > 0 ? `Disponibili ancora ${num(C.disp)} litri` : 'Olio esaurito per quest\'annata'}</b></div>` : ''}
+    <div class="card"><h2>🫒 Olio dell'annata</h2>
+      ${C.formati.map(f => `<div class="prod"><div class="main"><div class="t" style="font-weight:600">${esc(f.nome)}</div>
+        <div class="s muted">${num(f.litri,2)} L · ${f.prezzo != null ? 'circa ' + eur(f.prezzo) : 'prezzo da concordare'}</div></div>
+        <div class="step"><button type="button" onclick="cQty('${f.id}',-1)" aria-label="Meno">−</button><b>${C.qty[f.id] || 0}</b><button type="button" onclick="cQty('${f.id}',1)" aria-label="Più">+</button></div></div>`).join('')}
+      ${litri ? `<div class="riepilogo">Totale: <b>${num(litri, 2)} litri</b>${conPrezzo && stima ? ` · indicativamente <b>${eur(stima)}</b>` : ''}
+        <div class="muted" style="font-size:12px;margin-top:3px">Il prezzo finale, comprese eventuali spese di consegna, te lo conferma il produttore.</div></div>` : ''}
+      ${oltre ? `<div class="riepilogo" style="background:var(--red-soft);color:var(--red)">Hai superato la disponibilità di ${num(litri - C.disp)} litri.</div>` : ''}
+    </div>
+    <div class="card"><h2>🚚 Consegna</h2>
+      ${C.noteConsegna ? `<p class="muted" style="margin-top:0">${esc(C.noteConsegna)}</p>` : ''}
+      <form id="frmOrd">
+        <label class="f"><span>Indirizzo</span><input name="indirizzo" required value="${esc(c.indirizzo)}"></label>
+        <div class="grid2"><label class="f"><span>Comune</span><input name="comune" required value="${esc(c.comune)}"></label>
+          <label class="f"><span>CAP</span><input name="cap" value="${esc(c.cap || '')}"></label></div>
+        <div class="grid2"><label class="f"><span>Provincia</span><input name="provincia" maxlength="2" value="${esc(c.provincia || '')}"></label>
+          <label class="f"><span>Citofono, piano…</span><input name="note_indirizzo" value="${esc(c.note_indirizzo || '')}"></label></div>
+        <label class="f"><span>Data di consegna preferita (facoltativa)</span><input name="data" type="date" min="${today()}"></label>
+        <label class="f"><span>Note per il produttore</span><textarea name="note" placeholder="es. orari in cui sei a casa"></textarea></label>
+        <button class="btn block" type="submit" ${!litri || oltre ? 'disabled style="opacity:.5"' : ''}>Invia la prenotazione</button>
+      </form></div>`;
+  $('#frmOrd').onsubmit = async e => {
+    e.preventDefault(); const f = new FormData(e.target), b = e.target.querySelector('[type=submit]'); b.disabled = true; b.textContent = 'Invio…';
+    const righe = C.formati.filter(x => C.qty[x.id] > 0).map(x => ({ formato_id:x.id, quantita:C.qty[x.id] }));
+    const { error } = await sb.rpc('crea_ordine', { p_negozio:C.negozio.id, p_righe:righe, p_indirizzo:f.get('indirizzo'), p_comune:f.get('comune'),
+      p_cap:f.get('cap'), p_provincia:f.get('provincia'), p_note_indirizzo:f.get('note_indirizzo'), p_data:f.get('data') || null, p_note:f.get('note') || null });
+    if (error) { b.disabled = false; b.textContent = 'Invia la prenotazione'; return fail(error); }
+    C.qty = {}; C.vista = 'ordini'; toast('Prenotazione inviata ✓'); await caricaCliente(); renderCliente();
+  };
+}
+function cQty(id, d){ C.qty[id] = Math.max(0, Math.min(200, (C.qty[id] || 0) + d)); const y = scrollY; viewPrenota(); scrollTo(0, y); }
+function viewMieiOrdini(){
+  const v = $('#cv');
+  if (!C.ordini.length) { v.innerHTML = `<div class="card"><div class="empty">Non hai ancora prenotazioni.</div></div>`; return; }
+  v.innerHTML = C.ordini.map(o => `<div class="ordcard">
+      <div class="top"><b>${fdate(o.created_at.slice(0,10))}</b>${badgeSt(o.stato, STATI_ORD)}</div>
+      ${(o.ordine_righe || []).map(r => `<div class="muted" style="font-size:13.5px">${r.quantita} × ${esc(r.nome)}${r.prezzo_unitario != null ? ' · ' + eur(r.prezzo_unitario) + ' cad.' : ''}</div>`).join('')}
+      <div style="margin-top:6px;font-size:14px">${o.totale != null ? `Totale confermato: <b>${eur(o.totale)}</b>${o.spese_consegna ? ` (consegna ${eur(o.spese_consegna)})` : ''}` : '<span class="muted">Prezzo in attesa di conferma</span>'}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:4px">🚚 ${esc(indCompleto(o))}${o.data_preferita ? ' · preferibilmente il ' + fdate(o.data_preferita) : ''}</div>
+      ${o.nota_gestore ? `<div class="riepilogo" style="margin-bottom:0">💬 ${esc(o.nota_gestore)}</div>` : ''}
+      ${o.stato === 'richiesta' ? `<div class="actions"><button class="btn danger sm" onclick="annullaOrdineCliente('${o.id}')">Annulla la prenotazione</button></div>` : ''}
+    </div>`).join('') + `<div class="actions"><button class="btn sec" onclick="formRichiestaCliente($('#view'))">I miei dati di consegna</button></div>`;
+}
+async function annullaOrdineCliente(id){
+  if (!confirm('Vuoi annullare questa prenotazione?')) return;
+  const { error } = await sb.rpc('annulla_ordine', { p_ordine:id });
+  if (error) return fail(error);
+  toast('Prenotazione annullata'); await caricaCliente(); renderCliente();
+}
+
+/* ===== Vendite: parte del gestore ===== */
+async function loadVendite(){
+  const ne = await sb.from('negozi').select('*').eq('owner_id', S.user.id);
+  if (ne.error) throw ne.error;
+  S.negozi = ne.data || [];
+  const n = S.negozi[0];
+  if (!n) { S.formati = []; S.clienti = []; S.ordini = []; return; }
+  const [fo, cl, or] = await Promise.all([
+    sb.from('formati').select('*').eq('negozio_id', n.id).order('ordine').order('litri'),
+    sb.from('clienti').select('*').eq('negozio_id', n.id).order('created_at', { ascending:false }),
+    sb.from('ordini').select('*, ordine_righe(*)').eq('negozio_id', n.id).order('created_at', { ascending:false })
+  ]);
+  for (const r of [fo, cl, or]) if (r.error) throw r.error;
+  S.formati = fo.data; S.clienti = cl.data; S.ordini = or.data;
+}
+const negozio = () => (S.negozi || [])[0];
+function daGestire(){ return (S.clienti || []).filter(c => c.stato === 'in_attesa').length + (S.ordini || []).filter(o => o.stato === 'richiesta').length; }
+const clienteDi = id => (S.clienti || []).find(c => c.id === id) || {};
+function olioAnnata(){ return sum((S.moliture || []).filter(m => inYear(m.data, new Date().getFullYear())), m => litri(m) || 0); }
+function viewVendite(){
+  const v = $('#view'), n = negozio();
+  if (!n) {
+    v.innerHTML = `<div class="card"><h2>🛒 Vendi il tuo olio</h2>
+      <p style="margin-top:0">Attiva il tuo negozio: avrai un link da mandare ai clienti. Si registrano, tu li autorizzi, loro prenotano e tu consegni.</p>
+      <ul class="season"><li>Solo i clienti che approvi possono prenotare</li><li>Decidi tu il prezzo su ogni ordine</li><li>Consegna all'indirizzo del cliente</li><li>Gli incassi finiscono da soli nei Conti</li></ul>
+      <div class="actions"><button class="btn block" onclick="formNegozio()">Attiva il negozio</button></div></div>`;
+    return;
+  }
+  const attivi = S.ordini.filter(o => o.stato !== 'annullato');
+  const prenotati = sum(attivi, litriOrdine);
+  const incassato = sum(S.ordini.filter(o => o.stato === 'consegnato'), o => o.totale);
+  const attesa = S.clienti.filter(c => c.stato === 'in_attesa');
+  const filt = S.filtroOrd || 'aperti';
+  const ordini = S.ordini.filter(o => filt === 'tutti' ? true : filt === 'aperti' ? !['consegnato','annullato'].includes(o.stato) : o.stato === filt);
+  v.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="l">Litri in vendita</div><div class="v">${n.litri_in_vendita != null ? num(n.litri_in_vendita) + ' L' : '—'}</div><div class="d">olio ${new Date().getFullYear()}: ${num(olioAnnata())} L</div></div>
+      <div class="kpi"><div class="l">Prenotati</div><div class="v">${num(prenotati)} L</div>${n.litri_in_vendita != null ? `<div class="d">restano ${num(n.litri_in_vendita - prenotati)} L</div>` : ''}</div>
+      <div class="kpi"><div class="l">Da confermare</div><div class="v">${S.ordini.filter(o => o.stato === 'richiesta').length}</div></div>
+      <div class="kpi"><div class="l">Incassato</div><div class="v">${eur(incassato)}</div></div>
+    </div>
+    <div class="card"><h2>🔗 Link per i clienti<span class="sp"></span><span class="st ${n.attivo ? 'st-approvato' : 'st-annullato'}">${n.attivo ? 'Prenotazioni aperte' : 'Prenotazioni chiuse'}</span></h2>
+      <div class="shoplink">${esc(shopUrl(n.slug))}</div>
+      <div class="actions" style="margin-top:0;flex-wrap:wrap"><button class="btn sec sm" onclick="copiaLink()">📋 Copia</button><button class="btn sec sm" onclick="condividiLink()">📤 Condividi</button>
+        <button class="btn sec sm" onclick="qrNegozio()">🔳 QR</button><button class="btn sec sm" onclick="formNegozio()">⚙︎ Impostazioni</button></div></div>
+    ${attesa.length ? `<div class="card warn"><h2>🙋 Richieste di accesso (${attesa.length})</h2>
+      ${attesa.map(c => `<div class="row"><div class="main"><div class="t">${esc(c.nome)}</div><div class="s">${esc(c.email || '')}${c.telefono ? ' · ' + esc(c.telefono) : ''}</div>
+        <div class="s" style="white-space:normal">📍 ${esc(indCompleto(c))}</div></div>
+        <div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm" onclick="statoCliente('${c.id}','approvato')">Approva</button><button class="btn sm danger" onclick="statoCliente('${c.id}','rifiutato')">Rifiuta</button></div></div>`).join('')}</div>` : ''}
+    <div class="card"><h2>📦 Ordini</h2>
+      <div class="chips">${[['aperti','Da gestire'],['richiesta','Da confermare'],['confermato','Confermati'],['in_consegna','In consegna'],['consegnato','Consegnati'],['annullato','Annullati'],['tutti','Tutti']]
+        .map(([k,l]) => `<button class="chip ${filt === k ? 'on' : ''}" onclick="S.filtroOrd='${k}';viewVendite()">${l}</button>`).join('')}</div>
+      ${ordini.map(o => { const c = clienteDi(o.cliente_id); return `<div class="row tap" onclick="gestisciOrdine('${o.id}')"><div class="main">
+          <div class="t">${esc(c.nome || 'Cliente')} · ${num(litriOrdine(o), 2)} L</div>
+          <div class="s">${fdate(o.created_at.slice(0,10))} · ${esc(o.comune)}${o.data_preferita ? ' · consegna ' + fdate(o.data_preferita) : ''}</div></div>
+          <div style="text-align:right">${badgeSt(o.stato, STATI_ORD)}<div class="n" style="margin-top:3px">${eurOpt(o.totale)}</div></div></div>`; }).join('') || '<div class="empty">Nessun ordine in questa lista.</div>'}</div>
+    <div class="card"><h2>🏷️ Listino<span class="sp"></span><button class="btn sm sec" onclick="formFormato()">+ Formato</button></h2>
+      <div class="muted" style="margin:-4px 0 4px">I prezzi qui sono indicativi: quello finale lo decidi su ogni ordine.</div>
+      ${S.formati.map(f => `<div class="row tap" onclick="formFormato('${f.id}')"><div class="main"><div class="t">${esc(f.nome)}${f.attivo ? '' : ' <span class="badge grey">nascosto</span>'}</div>
+        <div class="s">${num(f.litri,2)} L</div></div><div class="n">${f.prezzo != null ? eur(f.prezzo) : '<span class="muted">da concordare</span>'}</div></div>`).join('') || '<div class="empty">Aggiungi i formati che vendi.</div>'}</div>
+    <div class="card"><h2>👥 Clienti (${S.clienti.filter(c => c.stato === 'approvato').length} autorizzati)</h2>
+      ${S.clienti.filter(c => c.stato !== 'in_attesa').map(c => `<div class="row tap" onclick="schedaCliente('${c.id}')"><div class="main"><div class="t">${esc(c.nome)}</div>
+        <div class="s">${esc(c.comune)} · ${S.ordini.filter(o => o.cliente_id === c.id && o.stato !== 'annullato').length} ordini</div></div>${badgeSt(c.stato, STATI_CLI)}</div>`).join('') || '<div class="empty">Ancora nessun cliente. Manda il link a chi vuoi.</div>'}</div>`;
+}
+function formNegozio(){
+  const n = negozio() || {};
+  const nomeBase = n.nome || 'Olio di ' + ((S.user.email || '').split('@')[0].split(/[._-]/)[0].replace(/^./, x => x.toUpperCase()) || 'casa');
+  openForm({ title: n.id ? 'Impostazioni negozio' : 'Attiva il negozio', fields:[
+    {name:'nome',label:'Nome del negozio',required:true,value:nomeBase},
+    {name:'slug',label:'Indirizzo del link',required:true,value:n.slug || slugDa(nomeBase),hint:'Solo lettere minuscole, numeri e trattini. Compare nel link: …?olio=' + (n.slug || slugDa(nomeBase))},
+    {name:'descrizione',label:'Presentazione per i clienti',type:'textarea',value:n.descrizione,ph:'es. Olio extravergine del nostro uliveto in Molise, raccolto a mano.'},
+    {name:'note_consegna',label:'Informazioni sulla consegna',type:'textarea',value:n.note_consegna,ph:'es. Consegno il sabato a Milano e Monza. Pagamento alla consegna.'},
+    {name:'litri_in_vendita',label:'Litri messi in vendita',type:'number',value:n.litri_in_vendita,hint:`Olio prodotto nel ${new Date().getFullYear()}: ${num(olioAnnata())} L. Lascia vuoto per non limitare le prenotazioni.`},
+    {name:'attivo',label:'Prenotazioni',type:'select',options:[['true','Aperte'],['false','Chiuse']],value:String(n.attivo ?? true),empty:false}],
+    onSubmit: async v => {
+      v.slug = slugDa(v.slug); v.attivo = v.attivo === 'true';
+      if (v.slug.length < 3) throw new Error('Il link deve avere almeno 3 caratteri');
+      const nuovo = !n.id;
+      try { const r = await save('negozi', v, n.id); if (nuovo) await creaFormatiBase(r.id); }
+      catch(e){ if (String(e.message).includes('negozi_slug_key')) throw new Error('Questo indirizzo del link è già usato: scegline un altro'); throw e; }
+      S.tab = 'vendite';
+    } });
+}
+async function creaFormatiBase(id){
+  await sb.from('formati').insert([['Bottiglia 0,5 L',0.5,1],['Bottiglia 0,75 L',0.75,2],['Latta 3 L',3,3],['Latta 5 L',5,4]].map(([nome,litri,ordine]) => ({ negozio_id:id, nome, litri, ordine })));
+}
+function formFormato(id){
+  const f = (S.formati || []).find(x => x.id === id) || {};
+  openForm({ title: id ? 'Modifica formato' : 'Nuovo formato', fields:[
+    {name:'nome',label:'Nome',required:true,value:f.nome,ph:'es. Latta 5 L'},
+    {name:'litri',label:'Litri',type:'number',required:true,value:f.litri,half:true},
+    {name:'prezzo',label:'Prezzo indicativo (€)',type:'number',value:f.prezzo,half:true},
+    {name:'attivo',label:'Visibile ai clienti',type:'select',options:[['true','Sì'],['false','No']],value:String(f.attivo ?? true),empty:false,half:true},
+    {name:'ordine',label:'Posizione in elenco',type:'number',value:f.ordine ?? (S.formati.length + 1),half:true}],
+    onSubmit: v => { v.attivo = v.attivo === 'true'; v.ordine = v.ordine || 0; if (!id) v.negozio_id = negozio().id; return save('formati', v, id); },
+    onDelete: id && (() => remove('formati', id)) });
+}
+async function statoCliente(id, stato){
+  const { error } = await sb.from('clienti').update({ stato }).eq('id', id);
+  if (error) return fail(error);
+  toast(stato === 'approvato' ? 'Cliente autorizzato ✓' : 'Stato aggiornato'); closeSheet(); await refresh();
+}
+function schedaCliente(id){
+  const c = clienteDi(id), ord = S.ordini.filter(o => o.cliente_id === id);
+  openSheet(`<h3>👤 ${esc(c.nome)}</h3><div class="card">
+      <div class="row"><div class="main">Stato</div>${badgeSt(c.stato, STATI_CLI)}</div>
+      ${c.email ? `<div class="row"><div class="main">Email</div><a class="n" href="mailto:${esc(c.email)}">${esc(c.email)}</a></div>` : ''}
+      ${c.telefono ? `<div class="row"><div class="main">Telefono</div><a class="n" href="tel:${esc(c.telefono)}">${esc(c.telefono)}</a></div>` : ''}
+      <div class="row"><div class="main">Indirizzo<div class="s" style="white-space:normal">${esc(indCompleto(c))}${c.note_indirizzo ? ' · ' + esc(c.note_indirizzo) : ''}</div></div><a class="n" href="${mapsDir(c)}" target="_blank" rel="noopener">Mappa ↗</a></div>
+      <div class="row"><div class="main">Ordini</div><div class="n">${ord.filter(o => o.stato !== 'annullato').length} · ${eur(sum(ord.filter(o => o.stato === 'consegnato'), o => o.totale))} incassati</div></div></div>
+    <div class="actions">${c.stato === 'approvato' ? `<button class="btn danger" onclick="statoCliente('${id}','bloccato')">Blocca</button>` : `<button class="btn" onclick="statoCliente('${id}','approvato')">Autorizza</button>`}</div>`);
+}
+function gestisciOrdine(id){
+  const o = S.ordini.find(x => x.id === id); if (!o) return;
+  const c = clienteDi(o.cliente_id), mod = ['richiesta','confermato'].includes(o.stato);
+  const prezzoDi = r => r.prezzo_unitario ?? (S.formati.find(f => f.id === r.formato_id)?.prezzo ?? '');
+  openSheet(`<h3>📦 Ordine di ${esc(c.nome || 'cliente')}</h3>
+    <div class="card">
+      <div class="row"><div class="main">Stato</div>${badgeSt(o.stato, STATI_ORD)}</div>
+      <div class="row"><div class="main">Ricevuto</div><div class="n">${new Date(o.created_at).toLocaleString('it-IT',{dateStyle:'medium',timeStyle:'short'})}</div></div>
+      ${c.telefono ? `<div class="row"><div class="main">Telefono</div><a class="n" href="tel:${esc(c.telefono)}">${esc(c.telefono)}</a></div>` : ''}
+      <div class="row"><div class="main">Consegna<div class="s" style="white-space:normal">${esc(indCompleto(o))}${o.note_indirizzo ? ' · ' + esc(o.note_indirizzo) : ''}${o.data_preferita ? '<br>Data preferita: <b>' + fdate(o.data_preferita) + '</b>' : ''}</div></div>
+        <a class="n" href="${mapsDir(o)}" target="_blank" rel="noopener">Mappa ↗</a></div>
+      ${o.note ? `<div class="row"><div class="main s" style="white-space:normal">💬 ${esc(o.note)}</div></div>` : ''}
+    </div>
+    <div class="card"><h2>Prezzo</h2>
+      <table class="righe-ord">${(o.ordine_righe || []).map(r => `<tr><td>${r.quantita} × ${esc(r.nome)}<div class="muted" style="font-size:12px">${num(r.litri * r.quantita, 2)} L</div></td>
+        <td style="text-align:right">${mod ? `<input type="number" step="0.01" min="0" inputmode="decimal" data-riga="${r.id}" data-q="${r.quantita}" value="${prezzoDi(r)}" placeholder="€ cad." oninput="totOrdine()">` : (r.prezzo_unitario != null ? eur(r.prezzo_unitario) + ' cad.' : '—')}</td></tr>`).join('')}
+        <tr><td>Spese di consegna</td><td style="text-align:right">${mod ? `<input type="number" step="0.01" min="0" inputmode="decimal" id="speseC" value="${o.spese_consegna ?? ''}" placeholder="0,00" oninput="totOrdine()">` : eur(o.spese_consegna || 0)}</td></tr></table>
+      <div class="tot"><span>Totale</span><span id="totOrd">${eurOpt(o.totale)}</span></div>
+      <label class="f" style="margin-top:6px"><span>Messaggio per il cliente (facoltativo)</span><textarea id="notaG" ${['consegnato','annullato'].includes(o.stato) ? 'disabled' : ''} placeholder="es. Passo sabato mattina verso le 10">${esc(o.nota_gestore || '')}</textarea></label>
+    </div>
+    <div class="actions" style="flex-wrap:wrap">${{
+      richiesta: `<button class="btn danger" onclick="aggiornaOrdine('${id}','annullato')">Rifiuta</button><button class="btn" onclick="aggiornaOrdine('${id}','confermato')">Conferma ordine</button>`,
+      confermato: `<button class="btn danger" onclick="aggiornaOrdine('${id}','annullato')">Annulla</button><button class="btn sec" onclick="aggiornaOrdine('${id}','confermato')">Salva</button><button class="btn" onclick="aggiornaOrdine('${id}','in_consegna')">In consegna</button>`,
+      in_consegna: `<button class="btn sec" onclick="aggiornaOrdine('${id}','confermato')">Torna a confermato</button><button class="btn" onclick="aggiornaOrdine('${id}','consegnato')">Consegnato e pagato</button>`,
+      consegnato: `<div class="muted" style="text-align:center;width:100%">✓ Consegnato. Incasso registrato nei Conti.</div>`,
+      annullato: `<div class="muted" style="text-align:center;width:100%">Ordine annullato.</div>`
+    }[o.stato]}</div>`);
+  if (mod) totOrdine();
+}
+function totOrdine(){
+  let t = 0, completo = true;
+  document.querySelectorAll('[data-riga]').forEach(i => { if (i.value === '') completo = false; t += Number(i.value || 0) * Number(i.dataset.q); });
+  t += Number($('#speseC')?.value || 0);
+  $('#totOrd').textContent = completo ? eur(t) : 'manca qualche prezzo';
+  return completo ? Math.round(t * 100) / 100 : null;
+}
+async function aggiornaOrdine(id, stato){
+  const o = S.ordini.find(x => x.id === id), c = clienteDi(o.cliente_id);
+  const mod = ['richiesta','confermato'].includes(o.stato);
+  const up = { stato, aggiornato_at: new Date().toISOString(), nota_gestore: $('#notaG')?.value || null };
+  try {
+    if (mod && stato !== 'annullato') {
+      const tot = totOrdine();
+      if (tot == null) return toast('Inserisci il prezzo di ogni formato prima di confermare');
+      for (const i of document.querySelectorAll('[data-riga]')) {
+        const { error } = await sb.from('ordine_righe').update({ prezzo_unitario: Number(i.value) }).eq('id', i.dataset.riga); if (error) throw error;
+      }
+      up.spese_consegna = $('#speseC').value === '' ? null : Number($('#speseC').value);
+      up.totale = tot;
+    }
+    if (stato === 'annullato' && !confirm(o.stato === 'richiesta' ? 'Rifiutare questo ordine?' : 'Annullare questo ordine?')) return;
+    if (stato === 'consegnato') {
+      if (!confirm(`Confermi la consegna e il pagamento di ${eur(o.totale)}? L'incasso verrà aggiunto ai Conti.`)) return;
+      const mv = await save('movimenti', { data: today(), tipo:'entrata', categoria:'vendita olio', importo: o.totale || 0,
+        descrizione: `Ordine ${c.nome || ''} · ${num(litriOrdine(o), 2)} L` });
+      up.movimento_id = mv.id;
+    }
+    const { error } = await sb.from('ordini').update(up).eq('id', id); if (error) throw error;
+    closeSheet(); await refresh();
+    toast({ confermato: o.stato === 'confermato' ? 'Ordine salvato ✓' : 'Ordine confermato ✓', in_consegna:'Ordine in consegna 🚚', consegnato:'Consegnato · incasso registrato ✓', annullato:'Ordine annullato' }[stato]);
+  } catch(e) { fail(e); }
+}
+async function copiaLink(){ try { await navigator.clipboard.writeText(shopUrl(negozio().slug)); toast('Link copiato ✓'); } catch(e){ prompt('Copia il link:', shopUrl(negozio().slug)); } }
+async function condividiLink(){
+  const n = negozio(), url = shopUrl(n.slug);
+  if (navigator.share) { try { await navigator.share({ title: n.nome, text: `Prenota l'olio di ${n.nome}`, url }); } catch(e){} }
+  else copiaLink();
+}
+function qrNegozio(){
+  const n = negozio();
+  openSheet(`<h3>🔳 QR del negozio</h3><div class="card" style="text-align:center"><div class="qrbox" style="width:230px">${qrSvg(shopUrl(n.slug))}</div>
+    <b>${esc(n.nome)}</b><div class="muted">Inquadralo per prenotare l'olio</div>
+    <div class="actions"><button class="btn sec" onclick="stampaQrNegozio()">🖨️ Stampa</button></div></div>`);
+}
+function stampaQrNegozio(){
+  const n = negozio();
+  let el = $('#print'); if (!el){ el = document.createElement('div'); el.id = 'print'; document.body.appendChild(el); }
+  el.innerHTML = `<div style="text-align:center;padding-top:30mm;font-family:-apple-system,Arial,sans-serif"><div style="font-size:30pt;font-weight:700">${esc(n.nome)}</div>
+    <div style="font-size:15pt;margin:4mm 0 10mm">Inquadra il codice per prenotare l'olio</div><div style="width:110mm;margin:0 auto">${qrSvg(shopUrl(n.slug))}</div>
+    <div style="font-size:10pt;margin-top:8mm;color:#444">${esc(shopUrl(n.slug))}</div></div>`;
+  setTimeout(() => window.print(), 150);
+}
+
 /* ===== Guida iniziale ===== */
 const GUIDA = [
   ['🫒','Benvenuto in Il mio Uliveto','Tutto il ciclo del tuo uliveto in un\'unica app: piante, lavori, raccolta, olio e conti. Ecco in breve cosa puoi fare.',null],
@@ -1092,6 +1476,7 @@ const GUIDA = [
   ['🧪','Lavori e trattamenti','Registra potature, concimazioni e trattamenti. Con i giorni di carenza l\'app ti avvisa finché non è il momento di raccogliere.','Lavori'],
   ['🧺','Raccolta e frantoio','Pesa le olive pianta per pianta e registra la molitura: resa e costo al litro dell\'olio si calcolano da soli.','Raccolta'],
   ['🌤️','Il meteo del tuo terreno','Previsioni a 7 giorni dove si trova l\'appezzamento, con avvisi su gelate, piogge e giorni adatti ai trattamenti.','Annata'],
+  ['🛒','Vendi il tuo olio','Attiva il negozio e manda il link ai clienti: tu li autorizzi, loro prenotano, tu decidi il prezzo e consegni a casa loro.','Vendite'],
   ['💶','I conti dell\'annata','Spese ed entrate per categoria, con il saldo dell\'anno: i costi di lavori e frantoio entrano in automatico.','Conti'],
   ['🚀','Iniziamo!','Primo passo: crea l\'appezzamento con l\'indirizzo del terreno, poi aggiungi le piante. Consiglio: aggiungi l\'app alla schermata Home dal menu del browser.',null]
 ];
@@ -1131,7 +1516,10 @@ function guidaSeNuova(){
 /* ===== Autenticazione ===== */
 let authMode = 'login';
 function renderAuth(){
-  $('#app').innerHTML = `<div class="auth"><div class="logo">🫒</div><h1>Il mio Uliveto</h1><p>Piante, lavori, raccolta, olio e conti in un solo posto.</p>
+  const shop = !!SHOP_PARAM;
+  $('#app').innerHTML = `<div class="auth"><div class="logo">🫒</div>
+    ${shop ? `<h1 id="shopNome">Prenota l'olio</h1><p id="shopDesc">Accedi o crea un account per chiedere di poter prenotare l'olio di questa annata.</p>`
+           : `<h1>Il mio Uliveto</h1><p>Piante, lavori, raccolta, olio e conti in un solo posto.</p>`}
     <form id="authf" class="card">
       <label class="f"><span>Email</span><input name="email" type="email" required autocomplete="email"></label>
       <label class="f"><span>Password</span><input name="password" type="password" required minlength="6" autocomplete="${authMode==='login'?'current-password':'new-password'}"></label>
@@ -1142,10 +1530,17 @@ function renderAuth(){
   $('#authf').onsubmit = async e => {
     e.preventDefault(); const fd = new FormData(e.target);
     const creds = { email: fd.get('email'), password: fd.get('password') };
-    const { data, error } = authMode==='login' ? await sb.auth.signInWithPassword(creds) : await sb.auth.signUp({ ...creds, options:{ emailRedirectTo: APP_URL } });
+    const opts = { emailRedirectTo: APP_URL };
+    if (shop) opts.data = { ruolo:'cliente', negozio: SHOP_PARAM.toLowerCase() };
+    const { data, error } = authMode==='login' ? await sb.auth.signInWithPassword(creds) : await sb.auth.signUp({ ...creds, options:opts });
     if (error) return fail(error);
     if (authMode==='signup' && !data.session) toast('Controlla la tua email per confermare l\'account, poi accedi.');
   };
+  if (shop) sb.rpc('negozio_pubblico', { p_slug: SHOP_PARAM }).then(({ data }) => {
+    const n = data?.[0]; if (!n || !$('#shopNome')) return;
+    $('#shopNome').textContent = n.nome;
+    $('#shopDesc').textContent = (n.descrizione ? n.descrizione + ' ' : '') + 'Accedi o crea un account per chiedere di poter prenotare.';
+  });
 }
 
 const APP_URL = location.origin + location.pathname;
@@ -1173,6 +1568,11 @@ sb.auth.onAuthStateChange((_e, session) => {
 async function avvia(){
   S._lastTab = null;
   if (!S.user) { CACHE_TAB.forEach(t=>S[t]=[]); S._caricato = false; S._daCache = false; return render(); }
+  if (modoCliente()) {
+    showSplash();
+    try { await avviaCliente(); } catch(e) { console.error(e); splashError('Non riesco a caricare il negozio. Controlla la connessione.'); }
+    return;
+  }
   const c = leggiCache();
   if (c) { Object.assign(S, c); S._daCache = true; S._caricato = true; render(); apriDaLink(); guidaSeNuova(); refresh(); return; }
   showSplash(); await refresh();

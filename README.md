@@ -13,6 +13,7 @@ Web app per gestire l'intero ciclo di un uliveto, **pianta per pianta**: lavori 
 - **Mappa**: vista satellite o stradale, piante colorate per stato o per produzione, posizionamento con GPS o toccando la mappa.
 - **Lavori**: potatura, concimazione, trattamenti, irrigazione, lavorazioni, sfalcio, con prodotto, dose, giorni di carenza, ore e costi; assegnabili a tutto l'uliveto, a un appezzamento o a singole piante.
 - **Raccolta e frantoio**: kg di olive per pianta o appezzamento, moliture con litri/kg di olio e calcolo automatico della resa.
+- **Vendita olio**: negozio con link e QR da condividere; i clienti si registrano e chiedono l'accesso, il gestore li autorizza; prenotazione per formati con controllo della disponibilità, prezzo deciso dal gestore su ogni ordine, consegna all'indirizzo del cliente, incasso registrato automaticamente nei Conti.
 - **Conti**: spese ed entrate per categoria, saldo dell'annata; i costi di lavori e moliture sono inclusi in automatico.
 - **QR code**: ogni pianta ha un QR univoco che apre direttamente la sua scheda; stampa delle etichette in fogli A4 da 12 (tutte o per appezzamento).
 - **Guida iniziale**: presentazione animata delle funzioni al primo accesso (scorrevole, saltabile), richiamabile dalle impostazioni.
@@ -25,7 +26,7 @@ Web app per gestire l'intero ciclo di un uliveto, **pianta per pianta**: lavori 
 - Sicurezza: Row Level Security su tutte le tabelle, ogni utente accede solo ai propri dati. La chiave nel codice è la chiave *publishable*, pensata per stare nel browser.
 - Hosting: GitHub Pages.
 
-Lo schema completo del database è in [`supabase/schema.sql`](supabase/schema.sql).
+Lo schema del database è in [`supabase/schema.sql`](supabase/schema.sql) (gestione dell'uliveto) e [`supabase/vendite.sql`](supabase/vendite.sql) (vendita olio: i clienti scrivono solo tramite funzioni che verificano autorizzazione e disponibilità).
 
 ## Configurazione Supabase
 
