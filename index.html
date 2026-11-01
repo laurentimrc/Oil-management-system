@@ -121,6 +121,19 @@ select.year{border:1px solid var(--line);background:var(--card);border-radius:10
 .sug button span{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sug button:active{background:var(--olive-soft)}
 .addrbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:-2px 0 12px;font-size:12.5px}
+.meteo-now{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+.meteo-now .e{font-size:42px;line-height:1}
+.meteo-now .temp{font-size:32px;font-weight:700;letter-spacing:-.5px}
+.meteo-now .det{font-size:12.5px;color:var(--muted);line-height:1.5}
+.days{display:flex;gap:6px;overflow-x:auto;padding:8px 0 4px;scrollbar-width:none}
+.day{flex:0 0 58px;text-align:center;background:var(--olive-soft);border-radius:11px;padding:7px 2px;font-size:12px;line-height:1.35}
+.day .e{font-size:21px;display:block;margin:2px 0}
+.day b{display:block}
+.day .r{color:var(--blue);font-size:11px;min-height:15px}
+.day.ok{box-shadow:inset 0 0 0 2px var(--olive-2)}
+.day.gelo{box-shadow:inset 0 0 0 2px #5b8fd6}
+.hints{list-style:none;margin:8px 0 0;padding:0;font-size:13.5px}
+.hints li{padding:7px 0;border-top:1px solid var(--line)}
 .lotto-pin{background:none;border:0}
 .lotto-pin div{transform:translate(-50%,-100%);display:inline-block;white-space:nowrap;background:#fff;color:#26291c;border-radius:10px;padding:3px 8px;font:700 12px/1.3 -apple-system,sans-serif;box-shadow:0 2px 6px rgba(0,0,0,.35)}
 .leaflet-tooltip{position:absolute;padding:1px 6px;background:rgba(20,22,15,.78);color:#fff;border-radius:6px;font:600 11px/1.4 -apple-system,sans-serif;white-space:nowrap;pointer-events:none;visibility:hidden}
@@ -427,6 +440,7 @@ function viewHome(){
       <div class="kpi"><div class="l">Resa media</div><div class="v">${a.resa!=null?num(a.resa)+'%':'—'}</div>${p.resa!=null?`<div class="d">${S.year-1}: ${num(p.resa)}%</div>`:''}</div>
       <div class="kpi"><div class="l">Costo per litro</div><div class="v">${a.lt?eur(a.spese/a.lt):'—'}</div><div class="d">spese ${eur(a.spese)}</div></div>
     </div>
+    <div class="card" id="meteoCard"><h2>🌤️ Meteo</h2><div class="empty">Carico le previsioni…</div></div>
     <div class="card"><h2>📅 ${MESI_L[m]}: cosa fare di solito</h2>
       <ul class="season">${STAGIONE[m].map(s=>`<li>${esc(s)}</li>`).join('')}</ul>
       <div class="muted" style="margin-top:6px">Indicazioni generali: adatta a zona, varietà e andamento stagionale.</div></div>
@@ -437,6 +451,7 @@ function viewHome(){
         : `<div class="empty">Registra le raccolte per pianta per vedere la classifica.</div>`}</div>
     <div class="card"><h2>🛠️ Ultimi lavori<span class="sp"></span><button class="btn sm sec" onclick="S.tab='lavori';render()">Tutti</button></h2>
       ${a.int.slice(0,5).map(rowIntervento).join('') || `<div class="empty">Nessun lavoro registrato nel ${S.year}.</div>`}</div>`;
+  meteoHome();
 }
 
 function rowIntervento(i){
@@ -565,6 +580,7 @@ function detPianta(id){
       ${p.lat?`<div class="row"><div class="main">Posizione</div><a class="n" href="https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lng}#map=19/${p.lat}/${p.lng}" target="_blank" rel="noopener">mappa ↗</a></div>`:''}
       ${p.note?`<div class="row"><div class="main s" style="white-space:normal">${esc(p.note)}</div></div>`:''}
     </div>
+    <div class="card" id="meteoPianta"><h2>🌤️ Meteo qui</h2><div class="muted">Carico…</div></div>
     <div class="card"><h2>Produzione (kg olive)</h2>
       <div class="bars">${prod.map(x=>`<div class="b ${x.y===S.year?'cur':''}"><em>${x.kg?num(x.kg):''}</em><i style="height:${x.kg/mx*80}%"></i><small>${x.y}</small></div>`).join('')}</div></div>
     <div class="card"><h2>Storico lavori</h2>${storia.map(rowIntervento).join('')||'<div class="empty">Nessun lavoro.</div>'}</div>
@@ -577,6 +593,95 @@ function detPianta(id){
       <div class="qrbox">${qrSvg(qrUrl(p))}</div>
       <div class="muted" style="text-align:center">Inquadralo con la fotocamera del telefono: si apre direttamente questa scheda.<br>ID univoco: <code>${esc(p.id)}</code></div>
       <div class="actions"><button class="btn sec" onclick="stampaEtichette(['${id}'])">🖨️ Stampa etichetta</button></div></div>`);
+  meteoPianta(p);
+}
+
+/* ===== Meteo (Open-Meteo, gratuito e senza chiave) ===== */
+const WMO = {0:['☀️','Sereno'],1:['🌤️','Poco nuvoloso'],2:['⛅','Parz. nuvoloso'],3:['☁️','Coperto'],45:['🌫️','Nebbia'],48:['🌫️','Nebbia con brina'],
+  51:['🌦️','Pioviggine'],53:['🌦️','Pioviggine'],55:['🌦️','Pioviggine'],56:['🌧️','Pioviggine gelata'],57:['🌧️','Pioviggine gelata'],
+  61:['🌧️','Pioggia debole'],63:['🌧️','Pioggia'],65:['🌧️','Pioggia forte'],66:['🌧️','Pioggia gelata'],67:['🌧️','Pioggia gelata'],
+  71:['🌨️','Neve debole'],73:['🌨️','Neve'],75:['❄️','Neve forte'],77:['🌨️','Nevischio'],80:['🌦️','Rovesci'],81:['🌧️','Rovesci'],82:['⛈️','Rovesci forti'],
+  85:['🌨️','Rovesci di neve'],86:['❄️','Rovesci di neve'],95:['⛈️','Temporale'],96:['⛈️','Temporale con grandine'],99:['⛈️','Temporale con grandine']};
+const wmo = c => WMO[c] || ['🌡️',''];
+const GG = ['dom','lun','mar','mer','gio','ven','sab'];
+const _meteoCache = {};
+function centro(ps){ return ps.length ? { lat: sum(ps,p=>p.lat)/ps.length, lng: sum(ps,p=>p.lng)/ps.length } : null; }
+function luoghiMeteo(){
+  const out = [];
+  S.appezzamenti.forEach(a => {
+    const c = a.lat!=null ? {lat:a.lat,lng:a.lng} : centro(S.piante.filter(p=>p.appezzamento_id===a.id && p.lat!=null));
+    if (c) out.push({ id:a.id, nome:a.nome, ...c });
+  });
+  const sciolte = centro(S.piante.filter(p=>!p.appezzamento_id && p.lat!=null));
+  if (sciolte) out.push({ id:'_', nome: out.length ? 'Altre piante' : 'Uliveto', ...sciolte });
+  return out;
+}
+async function meteo(lat, lng){
+  const k = lat.toFixed(3)+','+lng.toFixed(3), c = _meteoCache[k];
+  if (c && Date.now() - c.t < 15*60*1000) return c.d;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}`
+    + '&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation'
+    + '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max'
+    + '&past_days=7&forecast_days=7&timezone=auto';
+  const res = await fetch(url); if (!res.ok) throw new Error('meteo '+res.status);
+  const d = await res.json(); _meteoCache[k] = { t:Date.now(), d }; return d;
+}
+function giorniMeteo(d){
+  const D = d.daily, oggi = today();
+  return D.time.map((t,i)=>({ data:t, code:D.weather_code[i], max:D.temperature_2m_max[i], min:D.temperature_2m_min[i],
+    pioggia:D.precipitation_sum[i]||0, prob:D.precipitation_probability_max[i], vento:D.wind_speed_10m_max[i], passato:t<oggi, oggi:t===oggi }));
+}
+const nomeGiorno = (s, oggi) => s===today() ? 'Oggi' : GG[new Date(s+'T00:00').getDay()];
+function adattoTrattamenti(g, dopo){ return g.pioggia < 0.5 && (g.prob ?? 0) < 30 && g.vento < 15 && (!dopo || dopo.pioggia < 2); }
+function consigliMeteo(gs, luogoId){
+  const fut = gs.filter(g=>!g.passato), pass = gs.filter(g=>g.passato), h = [];
+  const gelo = fut.filter(g=>g.min <= 0);
+  if (gelo.length) { const g = gelo.reduce((a,b)=>a.min<b.min?a:b);
+    h.push(`❄️ <b>Gelo previsto</b> ${nomeGiorno(g.data)} (minima ${num(g.min)}°C)${g.min<=-5?': rischio danni alla chioma, specie per le piante giovani':''}. Rimanda le potature a dopo.`); }
+  const ok = fut.filter((g,i)=>adattoTrattamenti(g, fut[i+1]));
+  if (ok.length) h.push(`🧪 <b>Giorni adatti ai trattamenti</b>: ${ok.map(g=>nomeGiorno(g.data)).join(', ')} (niente pioggia, vento debole).`);
+  else h.push('🧪 Nei prossimi giorni non ci sono finestre ideali per i trattamenti: pioggia o vento in vista.');
+  const forte = fut.find(g=>g.pioggia >= 20);
+  if (forte) h.push(`🌧️ <b>Pioggia abbondante</b> ${nomeGiorno(forte.data)}: circa ${num(forte.pioggia,0)} mm.`);
+  const tratt = S.interventi.filter(i=>i.tipo==='trattamento' && i.data >= addDays(today(),-7) && i.data < today()
+    && (!i.appezzamento_id || luogoId==='_' || i.appezzamento_id===luogoId));
+  tratt.forEach(i => {
+    const mm = sum(pass.filter(g=>g.data > i.data), g=>g.pioggia);
+    if (mm >= 10) h.push(`☔ Dopo il trattamento ${i.prodotto?'con '+esc(i.prodotto)+' ':''}del ${fdate(i.data)} sono caduti ${num(mm,0)} mm: potrebbe essere stato dilavato.`);
+  });
+  h.push(`💧 Pioggia degli ultimi 7 giorni: <b>${num(sum(pass,g=>g.pioggia))} mm</b>.`);
+  return h;
+}
+async function meteoHome(){
+  const box = $('#meteoCard'); if (!box) return;
+  const luoghi = luoghiMeteo();
+  if (!luoghi.length) { box.innerHTML = `<h2>🌤️ Meteo</h2><div class="muted">Aggiungi l'indirizzo di un appezzamento (⚙︎) o posiziona le piante sulla mappa per vedere il meteo della zona.</div>`; return; }
+  const L0 = luoghi.find(l=>l.id===S.meteoLuogo) || luoghi[0]; S.meteoLuogo = L0.id;
+  try {
+    const d = await meteo(L0.lat, L0.lng); if (!$('#meteoCard')) return;
+    const c = d.current, gs = giorniMeteo(d), fut = gs.filter(g=>!g.passato);
+    box.innerHTML = `<h2>🌤️ Meteo<span class="sp"></span><span class="muted" style="font-weight:400">${esc(L0.nome)}</span></h2>
+      ${luoghi.length>1?`<div class="chips">${luoghi.map(l=>`<button class="chip ${l.id===L0.id?'on':''}" onclick="S.meteoLuogo='${l.id}';meteoHome()">${esc(l.nome)}</button>`).join('')}</div>`:''}
+      <div class="meteo-now"><span class="e">${wmo(c.weather_code)[0]}</span><span class="temp">${Math.round(c.temperature_2m)}°</span>
+        <span class="det">${wmo(c.weather_code)[1]} · percepita ${Math.round(c.apparent_temperature)}°<br>Vento ${Math.round(c.wind_speed_10m)} km/h · Umidità ${c.relative_humidity_2m}%</span></div>
+      <div class="days">${fut.map((g,i)=>`<div class="day ${g.min<=0?'gelo':adattoTrattamenti(g,fut[i+1])?'ok':''}"><b>${nomeGiorno(g.data)}</b><span class="e">${wmo(g.code)[0]}</span>${Math.round(g.max)}° <span class="muted">${Math.round(g.min)}°</span><div class="r">${g.pioggia>=0.5?num(g.pioggia,0)+' mm':''}</div></div>`).join('')}</div>
+      <div class="muted" style="font-size:11.5px">Bordo verde: giorno adatto ai trattamenti · bordo blu: gelo</div>
+      <ul class="hints">${consigliMeteo(gs, L0.id).map(x=>`<li>${x}</li>`).join('')}</ul>
+      <div class="muted" style="font-size:11px;margin-top:6px">Dati meteo: Open-Meteo.com</div>`;
+  } catch(e) { box.innerHTML = `<h2>🌤️ Meteo</h2><div class="muted">Previsioni non disponibili al momento.</div>`; }
+}
+async function meteoPianta(p){
+  const box = $('#meteoPianta'); if (!box) return;
+  const a = S.appezzamenti.find(x=>x.id===p.appezzamento_id);
+  const pos = p.lat!=null ? {lat:p.lat,lng:p.lng} : a?.lat!=null ? {lat:a.lat,lng:a.lng} : centro(S.piante.filter(x=>x.appezzamento_id && x.appezzamento_id===p.appezzamento_id && x.lat!=null));
+  if (!pos) { box.innerHTML = '<h2>🌤️ Meteo qui</h2><div class="muted">Posiziona la pianta o aggiungi l\'indirizzo dell\'appezzamento per vedere il meteo.</div>'; return; }
+  try {
+    const d = await meteo(pos.lat, pos.lng), c = d.current, fut = giorniMeteo(d).filter(g=>!g.passato).slice(0,3);
+    if (!$('#meteoPianta')) return;
+    box.innerHTML = `<h2>🌤️ Meteo qui</h2>
+      <div class="meteo-now"><span class="e" style="font-size:32px">${wmo(c.weather_code)[0]}</span><span class="temp" style="font-size:24px">${Math.round(c.temperature_2m)}°</span>
+        <span class="det">${wmo(c.weather_code)[1]} · vento ${Math.round(c.wind_speed_10m)} km/h<br>${fut.map(g=>`${nomeGiorno(g.data)} ${wmo(g.code)[0]} ${Math.round(g.max)}°/${Math.round(g.min)}°${g.pioggia>=0.5?' '+num(g.pioggia,0)+'mm':''}`).join(' · ')}</span></div>`;
+  } catch(e) { box.innerHTML = '<h2>🌤️ Meteo qui</h2><div class="muted">Meteo non disponibile al momento.</div>'; }
 }
 
 /* ===== QR code ed etichette ===== */
