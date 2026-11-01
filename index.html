@@ -1593,27 +1593,44 @@ async function condividiInvito(id){
 }
 
 /* ===== Guida iniziale ===== */
-const GUIDA = [
-  ['🫒','Benvenuto in Il mio Uliveto','Tutto il ciclo del tuo uliveto in un\'unica app: piante, lavori, raccolta, olio e conti. Ecco in breve cosa puoi fare.',null],
-  ['🌳','Ogni pianta ha la sua scheda','Crea le piante anche in blocco (es. da A-1 ad A-80) e segui di ogni albero stato, varietà, produzione e storico dei lavori.','Piante'],
-  ['🏷️','Un QR code per ogni albero','Stampa le etichette e appendile ai tronchi: inquadrandole con la fotocamera si apre subito la scheda di quella pianta.','Piante → 🏷️ QR'],
-  ['🗺️','Il tuo uliveto sulla mappa','Posiziona le piante con il GPS o toccando la chioma sulla foto satellitare, e colorale per stato di salute o produzione.','Piante → Mappa'],
-  ['🧪','Lavori e trattamenti','Registra potature, concimazioni e trattamenti. Con i giorni di carenza l\'app ti avvisa finché non è il momento di raccogliere.','Lavori'],
-  ['🧺','Raccolta e frantoio','Pesa le olive pianta per pianta e registra la molitura: resa e costo al litro dell\'olio si calcolano da soli.','Raccolta'],
-  ['🌤️','Il meteo del tuo terreno','Previsioni a 7 giorni dove si trova l\'appezzamento, con avvisi su gelate, piogge e giorni adatti ai trattamenti.','Annata'],
-  ['🛒','Vendi il tuo olio','Attiva il negozio e manda il link ai clienti: tu li autorizzi, loro prenotano, tu decidi il prezzo e consegni a casa loro.','Vendite'],
-  ['💶','I conti dell\'annata','Spese ed entrate per categoria, con il saldo dell\'anno: i costi di lavori e frantoio entrano in automatico.','Conti'],
-  ['🚀','Iniziamo!','Primo passo: crea l\'appezzamento con l\'indirizzo del terreno, poi aggiungi le piante. Consiglio: aggiungi l\'app alla schermata Home dal menu del browser.',null]
-];
+/* Schermate della guida: [icona, titolo, testo, dove, permesso richiesto]. Testi diversi per titolare, manager e agricoltore. */
+function guidaSchermate(){
+  const coll = S.owner && S.owner !== S.user?.id, az = accessoAttivo()?.azienda || 'questo uliveto';
+  const agr = S.ruolo === 'agricoltore';
+  return [
+    coll ? ['🫒',`Benvenuto in ${az}`, agr
+        ? 'Ti è stato dato accesso come agricoltore: vedi le piante e registri lavori e raccolte dal telefono. Ecco cosa puoi fare.'
+        : 'Ti è stato dato accesso come manager: puoi gestire tutto, dalle piante alle vendite. Ecco in breve le funzioni.', null]
+      : ['🫒','Benvenuto in Il mio Uliveto','Tutto il ciclo del tuo uliveto in un\'unica app: piante, lavori, raccolta, olio e conti. Ecco in breve cosa puoi fare.',null],
+    ['🌳','Ogni pianta ha la sua scheda', agr
+        ? 'Apri la scheda di ogni albero per vederne varietà, produzione e storico dei lavori, e aggiornane lo stato se noti qualcosa.'
+        : 'Crea le piante anche in blocco (es. da A-1 ad A-80) e segui di ogni albero stato, varietà, produzione e storico dei lavori.','Piante'],
+    ['🏷️','Un QR code per ogni albero', agr
+        ? 'Sugli alberi trovi un\'etichetta con il QR: inquadrala con la fotocamera e si apre subito la scheda di quella pianta.'
+        : 'Stampa le etichette e appendile ai tronchi: inquadrandole con la fotocamera si apre subito la scheda di quella pianta.','Piante → 🏷️ QR'],
+    ['🗺️','L\'uliveto sulla mappa','Posiziona le piante con il GPS o toccando la chioma sulla foto satellitare, e colorale per stato di salute o produzione.','Piante → Mappa'],
+    ['🧪','Lavori e trattamenti','Registra potature, concimazioni e trattamenti. Con i giorni di carenza l\'app avvisa finché non è il momento di raccogliere.','Lavori'],
+    agr ? ['🧺','Raccolta','Registra i chili di olive raccolti, pianta per pianta o per appezzamento. Vedi anche le moliture e la resa in olio.','Raccolta']
+        : ['🧺','Raccolta e frantoio','Pesa le olive pianta per pianta e registra la molitura: resa e costo al litro dell\'olio si calcolano da soli.','Raccolta'],
+    ['🌤️','Il meteo del terreno','Previsioni a 7 giorni dove si trova l\'appezzamento, con avvisi su gelate, piogge e giorni adatti ai trattamenti.','Annata'],
+    ['🛒','Vendi l\'olio','Attiva il negozio e manda il link ai clienti: li autorizzi, loro prenotano, decidi il prezzo su ogni ordine e consegni a casa loro.','Vendite','soldi'],
+    ['💶','I conti dell\'annata','Spese ed entrate per categoria, con il saldo dell\'anno: i costi di lavori e frantoio e gli incassi delle vendite entrano in automatico.','Conti','soldi'],
+    ['👥','Lavora in squadra','Invita un manager o chi lavora in campo: il manager gestisce tutto, l\'agricoltore registra lavori e raccolte senza vedere conti e vendite. Puoi revocare l\'accesso quando vuoi.','⚙︎ → Collaboratori','team'],
+    coll ? ['🚀','Iniziamo!', agr ? 'Quando finisci un lavoro in campo, registralo subito con il pulsante +: così resta nello storico dell\'uliveto e lo vede anche il titolare.' : 'Trovi tutto nelle schede in basso. Consiglio: aggiungi l\'app alla schermata Home dal menu del browser.', null]
+      : ['🚀','Iniziamo!','Primo passo: crea l\'appezzamento con l\'indirizzo del terreno, poi aggiungi le piante. Consiglio: aggiungi l\'app alla schermata Home dal menu del browser.',null]
+  ].filter(x => !x[4] || puo(x[4]));
+}
+let GUIDA = [];
 const guidaKey = () => 'uliveto:guida:' + S.user?.id;
 function apriGuida(){
+  GUIDA = guidaSchermate();
   let g = $('#guida'); if (!g) { g = document.createElement('div'); g.id = 'guida'; g.setAttribute('role','dialog'); g.setAttribute('aria-label','Guida dell\'app'); document.body.appendChild(g); }
   g.innerHTML = `<button class="g-skip" onclick="chiudiGuida()">Salta</button>
     <div class="g-track" id="gTrack">${GUIDA.map(([e,t,d,dove])=>`<section class="g-slide"><div class="g-ill"><span>${e}</span></div><h2>${esc(t)}</h2><p>${esc(d)}</p>${dove?`<div class="g-dove">Dove: <b>${esc(dove)}</b></div>`:''}</section>`).join('')}</div>
     <div class="g-foot"><div class="g-dots">${GUIDA.map((_,i)=>`<i onclick="guidaVai(${i})" aria-label="Schermata ${i+1}"></i>`).join('')}</div>
       <button class="btn" id="gNext" onclick="guidaAvanti()">Avanti</button></div>`;
   g.classList.add('open');
-  const tr = $('#gTrack'); tr.addEventListener('scroll', guidaAgg, { passive:true }); guidaAgg();
+  const tr = $('#gTrack'); tr.scrollLeft = 0; tr.addEventListener('scroll', guidaAgg, { passive:true }); guidaAgg();
   document.addEventListener('keydown', guidaTasti);
 }
 function guidaIdx(){ const tr = $('#gTrack'); return tr ? Math.round(tr.scrollLeft / tr.clientWidth) : 0; }
@@ -1621,7 +1638,7 @@ function guidaAgg(){
   const i = guidaIdx();
   document.querySelectorAll('.g-dots i').forEach((d,k)=>d.classList.toggle('on', k===i));
   document.querySelectorAll('.g-slide').forEach((sl,k)=>sl.classList.toggle('on', k===i));
-  const b = $('#gNext'); if (b) b.textContent = i === GUIDA.length-1 ? (S.appezzamenti.length ? 'Inizia' : 'Crea appezzamento') : 'Avanti';
+  const b = $('#gNext'); if (b) b.textContent = i === GUIDA.length-1 ? (!S.appezzamenti.length && puo('struttura') ? 'Crea appezzamento' : 'Inizia') : 'Avanti';
 }
 function guidaVai(i){ const tr = $('#gTrack'); tr.scrollTo({ left: i * tr.clientWidth, behavior:'smooth' }); }
 function guidaAvanti(){ const i = guidaIdx(); if (i >= GUIDA.length-1) return chiudiGuida(true); guidaVai(i+1); }
@@ -1630,7 +1647,7 @@ function chiudiGuida(inizia){
   try { localStorage.setItem(guidaKey(), '1'); } catch(e){}
   S._guidaVista = true; document.removeEventListener('keydown', guidaTasti);
   $('#guida')?.classList.remove('open');
-  if (inizia && !S.appezzamenti.length) setTimeout(formAppezzamento, 250);
+  if (inizia && !S.appezzamenti.length && puo('struttura')) setTimeout(formAppezzamento, 250);
 }
 function guidaSeNuova(){
   if (!S.user || S._guidaVista) return;

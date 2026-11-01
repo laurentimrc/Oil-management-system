@@ -17,7 +17,7 @@ Web app per gestire l'intero ciclo di un uliveto, **pianta per pianta**: lavori 
 - **Conti**: spese ed entrate per categoria, saldo dell'annata; i costi di lavori e moliture sono inclusi in automatico.
 - **Collaboratori**: il titolare invita via email un *manager* (vede e modifica tutto, tranne il team) o un *agricoltore* (vede l'uliveto, registra lavori e raccolte, aggiorna le piante; niente conti, vendite e costi). L'invito si attiva solo con email confermata; l'accesso si revoca in ogni momento.
 - **QR code**: ogni pianta ha un QR univoco che apre direttamente la sua scheda; stampa delle etichette in fogli A4 da 12 (tutte o per appezzamento).
-- **Guida iniziale**: presentazione animata delle funzioni al primo accesso (scorrevole, saltabile), richiamabile dalle impostazioni.
+- **Guida iniziale**: presentazione animata delle funzioni al primo accesso (scorrevole, saltabile), con schermate e testi adatti al ruolo (titolare, manager, agricoltore); richiamabile dalle impostazioni.
 - **Account e backup**: registrazione con email, recupero password, esportazione completa dei dati in JSON.
 
 ## Architettura
