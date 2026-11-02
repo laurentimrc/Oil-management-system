@@ -409,6 +409,16 @@ a.btn{text-decoration:none;display:inline-block}
 .spia{border:0;border-radius:99px;padding:6px 10px;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;background:var(--red-soft);color:var(--red)}
 .spia.attesa{background:var(--gold-soft);color:#7a5d00}
 @media (prefers-color-scheme: dark){.spia.attesa{color:var(--gold)}}
+
+/* chiusura dei fogli */
+#sheet .panel{max-height:86vh;padding-top:0}
+.sheet-top{position:sticky;top:0;z-index:3;display:flex;align-items:center;justify-content:center;height:44px;margin:0 -16px 4px;padding:0 12px;
+  background:var(--bg);border-radius:28px 28px 0 0;box-shadow:0 1px 0 var(--glass-brd,var(--line));cursor:grab;touch-action:none}
+.sheet-top .grab{margin:0;width:44px;height:5px}
+.sheet-x{position:absolute;right:12px;top:6px;width:34px;height:34px;border-radius:50%;border:1px solid var(--glass-brd,var(--line));background:var(--glass-2,var(--card));
+  color:var(--ink);font-size:15px;line-height:1;cursor:pointer;box-shadow:var(--glass-hi,none)}
+.sheet-x:active{transform:scale(.92)}
+#sheet h3{padding-right:40px}
 /* ===== Liquid glass ===== */
 :root{
   --r:20px;
@@ -508,7 +518,7 @@ label.f input:focus,label.f select:focus,label.f textarea:focus,.search:focus{ou
   <button class="btn sm retry" onclick="location.reload()">Riprova</button>
 </div>
 <div id="app"></div>
-<div id="sheet"><div class="panel"><div class="grab"></div><div id="sheetBody"></div></div></div>
+<div id="sheet" role="dialog" aria-modal="true"><div class="panel"><div class="sheet-top"><div class="grab"></div><button type="button" class="sheet-x" onclick="closeSheet()" aria-label="Chiudi">✕</button></div><div id="sheetBody"></div></div></div>
 <div id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
@@ -1203,9 +1213,33 @@ function viewConti(){
 }
 
 /* ===== Sheet & form ===== */
-function openSheet(html){ $('#sheetBody').innerHTML = html; $('#sheet').classList.add('open'); $('#sheet .panel').scrollTop=0; }
-function closeSheet(){ $('#sheet').classList.remove('open'); }
+/* Foglio che sale dal basso: si chiude con ✕, toccando fuori, trascinando verso il basso, con Esc o con il tasto/gesto Indietro */
+function openSheet(html){
+  const sh = $('#sheet'), pn = $('#sheet .panel');
+  $('#sheetBody').innerHTML = html; pn.style.transform = ''; sh.classList.add('open'); pn.scrollTop = 0;
+  if (!S._sheetStoria) { S._sheetStoria = true; try { history.pushState({ foglio:1 }, ''); } catch(e){} }
+}
+function closeSheet(){
+  $('#sheet').classList.remove('open');
+  // se subito dopo si apre un altro foglio, la voce nella cronologia resta valida
+  setTimeout(() => { if (!$('#sheet').classList.contains('open') && S._sheetStoria) { S._sheetStoria = false; S._ignoraPop = true; history.back(); } }, 0);
+}
 $('#sheet').addEventListener('click', e=>{ if(e.target.id==='sheet') closeSheet(); });
+window.addEventListener('popstate', () => {
+  if (S._ignoraPop) { S._ignoraPop = false; return; }
+  if (S._sheetStoria && $('#sheet').classList.contains('open')) { S._sheetStoria = false; $('#sheet').classList.remove('open'); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#sheet').classList.contains('open')) closeSheet(); });
+(() => { // trascina verso il basso per chiudere
+  const pn = $('#sheet .panel'); let y0 = null, dy = 0, dalTop = false;
+  pn.addEventListener('touchstart', e => { const t = e.target; dalTop = !!t.closest('.sheet-top');
+    y0 = (pn.scrollTop <= 0 || dalTop) && !t.closest('input,textarea,select,.plist,#map,.chips,.vt-gal') ? e.touches[0].clientY : null; dy = 0; }, { passive:true });
+  pn.addEventListener('touchmove', e => { if (y0 == null) return; dy = e.touches[0].clientY - y0;
+    if (dy > 0 && (pn.scrollTop <= 0 || dalTop)) { e.preventDefault(); pn.style.transition = 'none'; pn.style.transform = `translateY(${dy}px)`; } else if (dy < 0 && !dalTop) y0 = null; }, { passive:false });
+  pn.addEventListener('touchend', () => { if (y0 == null) return; pn.style.transition = 'transform .22s ease';
+    if (dy > 90) { pn.style.transform = 'translateY(100%)'; setTimeout(() => { closeSheet(); pn.style.transform = ''; pn.style.transition = ''; }, 200); }
+    else { pn.style.transform = ''; setTimeout(() => pn.style.transition = '', 230); } y0 = null; });
+})();
 
 function fieldHtml(f){
   if (f.type==='hidden') return `<input type="hidden" name="${f.name}" value="${esc(f.value ?? '')}">`;
