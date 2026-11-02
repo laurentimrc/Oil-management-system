@@ -38,6 +38,13 @@ nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:6;background:var(--card)
 nav.tabs button{flex:1;border:0;background:none;padding:9px 2px 8px;font-size:11px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:2px}
 nav.tabs button .ic{font-size:20px;line-height:1}
 nav.tabs button.on{color:var(--olive);font-weight:600}
+nav.tabs .tab-add{flex:0 0 72px;display:grid;place-items:center;padding:0}
+nav.tabs .tab-add span{width:52px;height:52px;margin-top:-20px;border-radius:18px;background:var(--olive);color:#fff;font-size:30px;line-height:52px;box-shadow:0 6px 16px -4px rgba(0,0,0,.35);border:4px solid var(--card)}
+nav.tabs .tab-add:active span{transform:scale(.92)}
+.sottomenu{position:sticky;top:calc(56px + env(safe-area-inset-top));z-index:5;background:var(--bg);padding:10px 16px 2px;max-width:720px;margin:0 auto}
+.sottomenu .seg{margin-bottom:0}
+.sottomenu .seg button{font-size:13.5px;padding:8px 4px;white-space:nowrap}
+.kpi.tap{cursor:pointer}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
 .card h2{font-size:15px;margin:0 0 10px;display:flex;align-items:center;gap:8px}
 .card h2 .sp{flex:1}
@@ -561,13 +568,11 @@ function render(){
       <select class="year" onchange="S.year=+this.value;render()">${ys.map(y=>`<option ${y===S.year?'selected':''}>${y}</option>`).join('')}</select>
       <button class="iconbtn" onclick="openSettings()" aria-label="Impostazioni">⚙︎</button>
     </header>
+    ${sottoMenu()}
     <main id="view"></main>
-    ${['home','lavori','raccolta','conti'].includes(S.tab)||(S.tab==='piante'&&puo('struttura')) ? `<button class="fab" onclick="fab()" aria-label="Aggiungi">+</button>`:''}
-    <nav class="tabs">
-      ${[['home','🏡','Annata'],['piante','🌳','Piante'],['lavori','🛠️','Lavori'],['raccolta','🧺','Raccolta'],['vendite','🛒','Vendite'],['conti','💶','Conti']]
-        .filter(([k])=>puo('soldi') || !['vendite','conti'].includes(k)).map(([k,ic,l])=>{const b = k==='vendite' ? daGestire() : 0;
-          return `<button class="${S.tab===k?'on':''}" onclick="S.tab='${k}';render();scrollTo(0,0)"><span class="ic">${ic}${b?`<em class="nb">${b}</em>`:''}</span>${l}</button>`}).join('')}
-    </nav>`;
+    <nav class="tabs">${sezioniVisibili().map((x, i, a) => {
+        const btn = `<button class="${x.pagine.includes(S.tab)?'on':''}" onclick="vaiSezione('${x.k}')"><span class="ic">${x.ic}${x.badge?.() ? `<em class="nb">${x.badge()}</em>` : ''}</span>${x.nome}</button>`;
+        return i === 2 ? `<button class="tab-add" onclick="quickAdd()" aria-label="Aggiungi"><span>+</span></button>` + btn : btn; }).join('')}</nav>`;
   ({home:viewHome,piante:viewPiante,lavori:viewLavori,raccolta:viewRaccolta,vendite:viewVendite,conti:viewConti})[S.tab]();
   if (nuovaVista) {
     const m = $('main'); m.classList.add('enter'); setTimeout(()=>m.classList.remove('enter'), 900);
@@ -923,7 +928,7 @@ function viewLavori(){
     <div class="kpis"><div class="kpi"><div class="l">Ore di lavoro ${S.year}</div><div class="v">${num(a.ore)}</div></div>
       ${puo('soldi') ? `<div class="kpi"><div class="l">Costo lavori ${S.year}</div><div class="v">${eur(sum(a.int,i=>i.costo))}</div></div>` : `<div class="kpi"><div class="l">Lavori ${S.year}</div><div class="v">${a.int.length}</div></div>`}</div>
     ${cardDaFare()}
-    <div class="card"><h2>${list.length} lavori nel ${S.year}</h2>${list.map(rowIntervento).join('')||'<div class="empty">Nessun lavoro. Usa + per registrarne uno.</div>'}</div>`;
+    <div class="card"><h2>${list.length} ${list.length === 1 ? "lavoro" : "lavori"} nel ${S.year}</h2>${list.map(rowIntervento).join('')||'<div class="empty">Nessun lavoro. Usa il pulsante + in basso per registrarne uno.</div>'}</div>`;
 }
 
 function viewRaccolta(){
@@ -1025,13 +1030,38 @@ function openForm({title, fields, onSubmit, onDelete, extra=''}){
 const appOpts = () => S.appezzamenti.map(a=>[a.id,a.nome]);
 const pianteOpts = () => S.piante.map(p=>[p.id, p.codice+(p.varieta?' · '+p.varieta:'')]);
 
-function fab(){
-  ({home:()=>quickAdd(), piante:()=>formPianta(), lavori:()=>formIntervento(), raccolta:()=>formRaccolta(), conti:()=>formMovimento()})[S.tab]();
+/* Menu principale: poche sezioni, ognuna con le sue pagine */
+const SEZIONI = [
+  { k:'annata', ic:'🏡', nome:'Annata', pagine:['home','conti'], etichette:{ home:'Riepilogo', conti:'💶 Conti' } },
+  { k:'piante', ic:'🌳', nome:'Piante', pagine:['piante'] },
+  { k:'campo', ic:'🛠️', nome:'Campagna', pagine:['lavori','raccolta'], etichette:{ lavori:'🛠️ Lavori', raccolta:'🧺 Raccolta e frantoio' } },
+  { k:'olio', ic:'🫒', nome:'Olio', pagine:['vendite'], soldi:true, badge:() => daGestire() }
+];
+const PAGINE_SOLDI = ['conti','vendite'];
+const sezioniVisibili = () => SEZIONI.filter(x => !x.soldi || puo('soldi'));
+const sezioneDi = t => SEZIONI.find(x => x.pagine.includes(t)) || SEZIONI[0];
+function vaiSezione(k){
+  const x = SEZIONI.find(z => z.k === k);
+  if (!x.pagine.includes(S.tab)) S.tab = (S.ultima || {})[k] || x.pagine[0];
+  render(); scrollTo(0, 0);
+}
+function vaiPagina(t){ S.tab = t; (S.ultima ||= {})[sezioneDi(t).k] = t; render(); scrollTo(0, 0); }
+const SOTTO_OLIO = [['ordini','📦 Ordini'],['vetrina','🎨 Vetrina'],['magazzino','🛢️ Magazzino']];
+function sottoMenu(){
+  if (S.tab === 'vendite') { const o = S.olio || 'ordini', b = daGestire();
+    return `<div class="sottomenu"><div class="seg">${SOTTO_OLIO.map(([k, l]) => `<button class="${o === k ? 'on' : ''}" onclick="S.olio='${k}';render();scrollTo(0,0)">${l}${k === 'ordini' && b ? ` <em class="nb nb-in">${b}</em>` : ''}</button>`).join('')}</div></div>`; }
+  const x = sezioneDi(S.tab), pag = x.pagine.filter(t => !PAGINE_SOLDI.includes(t) || puo('soldi'));
+  if (pag.length < 2) return '';
+  return `<div class="sottomenu"><div class="seg">${pag.map(t => `<button class="${S.tab === t ? 'on' : ''}" onclick="vaiPagina('${t}')">${x.etichette[t]}</button>`).join('')}</div></div>`;
 }
 function quickAdd(){
-  openSheet(`<h3>Aggiungi</h3><div class="card">
-    ${[['🛠️','Lavoro / trattamento','formIntervento()'],['📌','Promemoria (lavoro da fare)','formPromemoria()'],['🧺','Raccolta','formRaccolta()'],['🏭','Molitura','formMolitura()','struttura'],['💶','Spesa o entrata','formMovimento()','soldi'],['🌳','Pianta','formPianta()','struttura']]
-      .filter(x=>!x[3] || puo(x[3])).map(([ic,l,fn])=>`<div class="row tap" onclick="${fn}"><div style="font-size:22px">${ic}</div><div class="main"><div class="t">${l}</div></div><div class="muted">›</div></div>`).join('')}</div>`);
+  const prima = { piante:'formPianta()', raccolta:'formRaccolta()', conti:'formMovimento()', vendite:{ magazzino:'formOlioMagazzino(null,\'carico\')', vetrina:'formAnnuncio()' }[S.olio] }[S.tab];
+  const voci = [['🛠️','Lavoro / trattamento','formIntervento()'],['📌','Promemoria (lavoro da fare)','formPromemoria()'],['🧺','Raccolta','formRaccolta()'],['🏭','Molitura','formMolitura()','struttura'],['💶','Spesa o entrata','formMovimento()','soldi'],['🌳','Pianta','formPianta()','struttura'],
+    ['🛢️','Olio in magazzino','formOlioMagazzino(null,\'carico\')','soldi'],['📣','Annuncio per i clienti','formAnnuncio()','soldi']]
+    .filter(x => !x[3] || puo(x[3])).filter(x => x[2] !== 'formAnnuncio()' || negozio());
+  voci.sort((a, b) => (b[2] === prima) - (a[2] === prima));
+  openSheet(`<h3>Cosa vuoi registrare?</h3><div class="card">
+    ${voci.map(([ic,l,fn])=>`<div class="row tap" onclick="${fn}"><div style="font-size:22px">${ic}</div><div class="main"><div class="t">${l}</div></div><div class="muted">›</div></div>`).join('')}</div>`);
 }
 
 function formAppezzamento(id){
@@ -1792,23 +1822,19 @@ function viewVendite(){
     v.innerHTML = `<div class="card"><h2>🛒 Vendi il tuo olio</h2>
       <p style="margin-top:0">Attiva il tuo negozio: avrai un link da mandare ai clienti. Si registrano, tu li autorizzi, loro prenotano e tu consegni.</p>
       <ul class="season"><li>Solo i clienti che approvi possono prenotare</li><li>Decidi tu il prezzo su ogni ordine</li><li>Consegna all'indirizzo del cliente</li><li>Gli incassi finiscono da soli nei Conti</li></ul>
-      <div class="actions"><button class="btn block" onclick="formNegozio()">Attiva il negozio</button></div></div>${cardMagazzino()}`;
+      <div class="actions"><button class="btn block" onclick="formNegozio()">Attiva il negozio</button></div></div>`;
+    if (S.olio === 'magazzino') v.innerHTML = cardMagazzino();
     return;
   }
+  const sotto = S.olio || 'ordini';
+  if (sotto === 'magazzino') { v.innerHTML = cardMagazzino(); return; }
   const attivi = S.ordini.filter(o => o.stato !== 'annullato');
   const prenotati = sum(attivi, litriOrdine);
   const incassato = sum(S.ordini.filter(o => o.stato === 'consegnato'), o => o.totale);
   const attesa = S.clienti.filter(c => c.stato === 'in_attesa');
   const filt = S.filtroOrd || 'aperti';
   const ordini = S.ordini.filter(o => filt === 'tutti' ? true : filt === 'aperti' ? !['consegnato','annullato'].includes(o.stato) : o.stato === filt);
-  v.innerHTML = `
-    <div class="kpis">
-      <div class="kpi"><div class="l">Litri in vendita</div><div class="v">${n.litri_in_vendita != null ? num(n.litri_in_vendita) + ' L' : '—'}</div><div class="d">su ${num(olioEntrato())} L in magazzino</div></div>
-      <div class="kpi"><div class="l">Prenotati</div><div class="v">${num(prenotati)} L</div>${n.litri_in_vendita != null ? `<div class="d">restano ${num(n.litri_in_vendita - prenotati)} L</div>` : ''}</div>
-      <div class="kpi"><div class="l">Da confermare</div><div class="v">${S.ordini.filter(o => o.stato === 'richiesta').length}</div></div>
-      <div class="kpi"><div class="l">Incassato</div><div class="v">${eur(incassato)}</div></div>
-    </div>
-    ${cardMagazzino()}
+  if (sotto === 'vetrina') { v.innerHTML = `
     <div class="card"><h2>🔗 Link per i clienti<span class="sp"></span><span class="st ${n.attivo ? 'st-approvato' : 'st-annullato'}">${n.attivo ? 'Prenotazioni aperte' : 'Prenotazioni chiuse'}</span></h2>
       <div class="shoplink">${esc(shopUrl(n.slug))}</div>
       <div class="actions" style="margin-top:0;flex-wrap:wrap"><button class="btn sec sm" onclick="copiaLink()">📋 Copia</button><button class="btn sec sm" onclick="condividiLink()">📤 Condividi</button>
@@ -1821,6 +1847,17 @@ function viewVendite(){
     <div class="card"><h2>📣 Bacheca<span class="sp"></span><button class="btn sm sec" onclick="formAnnuncio()">+ Annuncio</button></h2>
       ${(S.annunci || []).slice(0, 4).map(a => `<div class="row tap" onclick="formAnnuncio('${a.id}')"><div style="font-size:22px">${esc(a.emoji)}</div><div class="main"><div class="t">${esc(a.titolo)}</div>
         <div class="s">${quandoFa(a.created_at)}${a.testo ? ' · ' + esc(a.testo) : ''}</div></div></div>`).join('') || '<div class="muted">Avvisa i clienti di raccolta, olio nuovo e giorni di consegna: lo vedono subito e ricevono una notifica.</div>'}</div>
+    <div class="card"><h2>🏷️ Listino<span class="sp"></span><button class="btn sm sec" onclick="formFormato()">+ Formato</button></h2>
+      <div class="muted" style="margin:-4px 0 4px">I prezzi qui sono indicativi: quello finale lo decidi su ogni ordine.</div>
+      ${S.formati.map(f => `<div class="row tap" onclick="formFormato('${f.id}')"><div class="main"><div class="t">${esc(f.nome)}${f.attivo ? '' : ' <span class="badge grey">nascosto</span>'}</div>
+        <div class="s">${num(f.litri,2)} L</div></div><div class="n">${f.prezzo != null ? eur(f.prezzo) : '<span class="muted">da concordare</span>'}</div></div>`).join('') || '<div class="empty">Aggiungi i formati che vendi.</div>'}</div>`; return; }
+  v.innerHTML = `
+    <div class="kpis">
+      <div class="kpi tap" onclick="S.olio='magazzino';render()"><div class="l">Litri in vendita ›</div><div class="v">${n.litri_in_vendita != null ? num(n.litri_in_vendita) + ' L' : '—'}</div><div class="d">su ${num(olioEntrato())} L in magazzino</div></div>
+      <div class="kpi"><div class="l">Prenotati</div><div class="v">${num(prenotati)} L</div>${n.litri_in_vendita != null ? `<div class="d">restano ${num(n.litri_in_vendita - prenotati)} L</div>` : ''}</div>
+      <div class="kpi"><div class="l">Da confermare</div><div class="v">${S.ordini.filter(o => o.stato === 'richiesta').length}</div></div>
+      <div class="kpi"><div class="l">Incassato</div><div class="v">${eur(incassato)}</div></div>
+    </div>
     ${attesa.length ? `<div class="card warn"><h2>🙋 Richieste di accesso (${attesa.length})</h2>
       ${attesa.map(c => `<div class="row"><div class="main"><div class="t">${esc(c.nome)}</div><div class="s">${esc(c.email || '')}${c.telefono ? ' · ' + esc(c.telefono) : ''}</div>
         <div class="s" style="white-space:normal">📍 ${esc(indCompleto(c))}</div></div>
@@ -1832,10 +1869,6 @@ function viewVendite(){
           <div class="t">${esc(c.nome || 'Cliente')} · ${num(litriOrdine(o), 2)} L</div>
           <div class="s">${fdate(o.created_at.slice(0,10))} · ${esc(o.comune)}${o.data_preferita ? ' · consegna ' + fdate(o.data_preferita) : ''}</div></div>
           <div style="text-align:right">${badgeSt(o.stato, STATI_ORD)}<div class="n" style="margin-top:3px">${eurOpt(o.totale)}</div></div></div>`; }).join('') || '<div class="empty">Nessun ordine in questa lista.</div>'}</div>
-    <div class="card"><h2>🏷️ Listino<span class="sp"></span><button class="btn sm sec" onclick="formFormato()">+ Formato</button></h2>
-      <div class="muted" style="margin:-4px 0 4px">I prezzi qui sono indicativi: quello finale lo decidi su ogni ordine.</div>
-      ${S.formati.map(f => `<div class="row tap" onclick="formFormato('${f.id}')"><div class="main"><div class="t">${esc(f.nome)}${f.attivo ? '' : ' <span class="badge grey">nascosto</span>'}</div>
-        <div class="s">${num(f.litri,2)} L</div></div><div class="n">${f.prezzo != null ? eur(f.prezzo) : '<span class="muted">da concordare</span>'}</div></div>`).join('') || '<div class="empty">Aggiungi i formati che vendi.</div>'}</div>
     <div class="card"><h2>👥 Clienti (${S.clienti.filter(c => c.stato === 'approvato').length} autorizzati)</h2>
       ${S.clienti.filter(c => c.stato !== 'in_attesa').map(c => { const p = puntiDa(c, S.ordini); return `<div class="row tap" onclick="schedaCliente('${c.id}')"><div class="main"><div class="t">${esc(c.nome)}</div>
         <div class="s">${esc(c.comune)} · ${S.ordini.filter(o => o.cliente_id === c.id && o.stato !== 'annullato').length} ordini${p ? ` · ${p.liv.ic} ${p.punti} punti` : ''}</div></div>${badgeSt(c.stato, STATI_CLI)}</div>`; }).join('') || '<div class="empty">Ancora nessun cliente. Manda il link a chi vuoi.</div>'}</div>`;
@@ -2218,12 +2251,15 @@ registraSW();
    Ogni voce: ic (icona), t (titolo), d (descrizione), facoltativi perm ('soldi' | 'struttura' | 'team')
    per mostrarla solo a chi può usarla, cta (testo del pulsante) e vai (funzione che porta alla novità). */
 const NOVITA = [
+  { n:10, data:'2026-11-02', titolo:'Menu più semplice', voci:[
+    { ic:'🧭', t:'Quattro sezioni invece di sei', d:'Annata (riepilogo e conti), Piante, Campagna (lavori, raccolta e frantoio) e Olio (ordini, vetrina e magazzino). Dentro ogni sezione passi da una pagina all\'altra con i pulsanti in alto.' },
+    { ic:'➕', t:'Il + sempre al centro', d:'Da qualsiasi schermata tocchi + in basso e scegli cosa registrare: lavoro, raccolta, molitura, spesa, pianta o olio in magazzino.', cta:'Prova il +', vai:() => { closeSheet?.(); setTimeout(quickAdd, 300); } } ]},
   { n:9, data:'2026-11-02', titolo:'Magazzino dell\'olio', voci:[
-    { ic:'🛢️', t:'Il magazzino dell\'olio', d:'Vedi quanto olio ti resta, annata per annata: quello delle moliture entra da solo, quello degli anni precedenti lo aggiungi tu. Registra anche l\'olio usato in casa o regalato.', perm:'soldi', cta:'Apri il magazzino', vai:() => { S.tab = 'vendite'; render(); setTimeout(() => formOlioMagazzino(null, 'carico'), 300); } },
-    { ic:'🏷️', t:'Scegli quanti litri vendere', d:'Titolare e manager decidono quanti litri del magazzino mettere in vendita: l\'app tiene il conto di quelli prenotati e di quelli che restano.', perm:'soldi', cta:'Scegli i litri', vai:() => { S.tab = 'vendite'; render(); setTimeout(formLitriVendita, 300); } } ]},
+    { ic:'🛢️', t:'Il magazzino dell\'olio', d:'Vedi quanto olio ti resta, annata per annata: quello delle moliture entra da solo, quello degli anni precedenti lo aggiungi tu. Registra anche l\'olio usato in casa o regalato.', perm:'soldi', cta:'Apri il magazzino', vai:() => { S.tab = 'vendite'; S.olio = 'magazzino'; render(); setTimeout(() => formOlioMagazzino(null, 'carico'), 300); } },
+    { ic:'🏷️', t:'Scegli quanti litri vendere', d:'Titolare e manager decidono quanti litri del magazzino mettere in vendita: l\'app tiene il conto di quelli prenotati e di quelli che restano.', perm:'soldi', cta:'Scegli i litri', vai:() => { S.tab = 'vendite'; S.olio = 'magazzino'; render(); setTimeout(formLitriVendita, 300); } } ]},
   { n:8, data:'2026-11-02', titolo:'Vetrina, bacheca e punti oliva', voci:[
-    { ic:'🎨', t:'Vetrina personalizzabile', d:'Copertina, galleria di foto, colore, la vostra storia e le note sull\'annata. Chi apre il link la vede anche prima di essere autorizzato.', perm:'soldi', cta:'Personalizza', vai:() => { S.tab = 'vendite'; render(); setTimeout(formVetrina, 300); } },
-    { ic:'📣', t:'Bacheca per i clienti', d:'Pubblica un annuncio (raccolta, olio nuovo, giorni di consegna): i clienti lo vedono subito e ricevono una notifica.', perm:'soldi', cta:'Scrivi un annuncio', vai:() => { S.tab = 'vendite'; render(); setTimeout(formAnnuncio, 300); } },
+    { ic:'🎨', t:'Vetrina personalizzabile', d:'Copertina, galleria di foto, colore, la vostra storia e le note sull\'annata. Chi apre il link la vede anche prima di essere autorizzato.', perm:'soldi', cta:'Personalizza', vai:() => { S.tab = 'vendite'; S.olio = 'vetrina'; render(); setTimeout(formVetrina, 300); } },
+    { ic:'📣', t:'Bacheca per i clienti', d:'Pubblica un annuncio (raccolta, olio nuovo, giorni di consegna): i clienti lo vedono subito e ricevono una notifica.', perm:'soldi', cta:'Scrivi un annuncio', vai:() => { S.tab = 'vendite'; S.olio = 'vetrina'; render(); setTimeout(formAnnuncio, 300); } },
     { ic:'🫒', t:'Punti oliva', d:'I clienti accumulano punti con gli ordini consegnati e salgono di livello, da Germoglio a Ulivo secolare. Tu decidi i premi.', perm:'soldi' },
     { ic:'⚡', t:'Tutto in tempo reale', d:'Nuovi ordini e richieste ti compaiono senza ricaricare; i clienti vedono subito conferme e consegne.', perm:'soldi' } ]},
   { n:7, data:'2026-11-01', titolo:'Le novità, sempre a portata di mano', voci:[
@@ -2233,13 +2269,13 @@ const NOVITA = [
   { n:5, data:'2026-11-01', titolo:'Notifiche e promemoria', voci:[
     { ic:'🔔', t:'Notifiche sul telefono', d:'Gelate e piogge in arrivo, giorni buoni per trattare, lavori del giorno e, se gestisci le vendite, nuovi clienti e ordini. Anche ad app chiusa.', cta:'Attiva le notifiche',
       vai:() => { openSettings(); setTimeout(() => $('#cardNotifiche')?.scrollIntoView({ behavior:'smooth', block:'center' }), 450); } },
-    { ic:'📌', t:'Promemoria dei lavori', d:'Programma i lavori da fare e, quando registri un trattamento, fattelo ricordare di nuovo dopo i giorni che vuoi.', cta:'Apri Lavori', vai:() => { S.tab = 'lavori'; render(); } },
+    { ic:'📌', t:'Promemoria dei lavori', d:'Programma i lavori da fare e, quando registri un trattamento, fattelo ricordare di nuovo dopo i giorni che vuoi.', cta:'Apri Campagna', vai:() => { S.tab = 'lavori'; render(); } },
     { ic:'🗓️', t:'Date di carenza corrette', d:'La fine dei tempi di carenza risultava un giorno prima del dovuto: ora è esatta.' } ]},
   { n:4, data:'2026-11-01', titolo:'Lavoro in squadra', voci:[
     { ic:'👥', t:'Collaboratori', d:'Invita un manager, che gestisce tutto, o un agricoltore, che registra lavori e raccolte senza vedere conti e vendite.', perm:'team', cta:'Invita qualcuno', vai:() => openSettings() },
     { ic:'🎓', t:'Guida su misura', d:'La guida iniziale ora mostra a ciascuno solo le funzioni che può usare.' } ]},
   { n:3, data:'2026-11-01', titolo:'Vendita dell\'olio', voci:[
-    { ic:'🛒', t:'Il tuo negozio', d:'Mandi un link ai clienti, li autorizzi, prenotano l\'olio e tu decidi il prezzo su ogni ordine. L\'incasso finisce da solo nei Conti.', perm:'soldi', cta:'Apri Vendite', vai:() => { S.tab = 'vendite'; render(); } } ]},
+    { ic:'🛒', t:'Il tuo negozio', d:'Mandi un link ai clienti, li autorizzi, prenotano l\'olio e tu decidi il prezzo su ogni ordine. L\'incasso finisce da solo nei Conti.', perm:'soldi', cta:'Apri Olio', vai:() => { S.tab = 'vendite'; S.olio = 'ordini'; render(); } } ]},
   { n:2, data:'2026-11-01', titolo:'Meteo e avvio veloce', voci:[
     { ic:'🌤️', t:'Il meteo del tuo terreno', d:'Previsioni a 7 giorni per ogni appezzamento, con avvisi su gelo, pioggia e giorni adatti ai trattamenti.', cta:'Vedi il meteo', vai:() => { S.tab = 'home'; render(); setTimeout(() => $('#meteoCard')?.scrollIntoView({ behavior:'smooth', block:'center' }), 300); } },
     { ic:'⚡', t:'Apertura immediata', d:'L\'app si apre subito con gli ultimi dati e si aggiorna da sola; risolto il blocco dopo qualche ora di inattività.' } ]},
@@ -2313,15 +2349,15 @@ function guidaSchermate(){
         ? 'Sugli alberi trovi un\'etichetta con il QR: inquadrala con la fotocamera e si apre subito la scheda di quella pianta.'
         : 'Stampa le etichette e appendile ai tronchi: inquadrandole con la fotocamera si apre subito la scheda di quella pianta.','Piante → 🏷️ QR'],
     ['🗺️','L\'uliveto sulla mappa','Posiziona le piante con il GPS o toccando la chioma sulla foto satellitare, e colorale per stato di salute o produzione.','Piante → Mappa'],
-    ['🧪','Lavori e trattamenti','Registra potature, concimazioni e trattamenti. Con i giorni di carenza l\'app avvisa finché non è il momento di raccogliere.','Lavori'],
-    agr ? ['🧺','Raccolta','Registra i chili di olive raccolti, pianta per pianta o per appezzamento. Vedi anche le moliture e la resa in olio.','Raccolta']
-        : ['🧺','Raccolta e frantoio','Pesa le olive pianta per pianta e registra la molitura: resa e costo al litro dell\'olio si calcolano da soli.','Raccolta'],
+    ['🧪','Lavori e trattamenti','Registra potature, concimazioni e trattamenti. Con i giorni di carenza l\'app avvisa finché non è il momento di raccogliere.','Campagna → Lavori'],
+    agr ? ['🧺','Raccolta','Registra i chili di olive raccolti, pianta per pianta o per appezzamento. Vedi anche le moliture e la resa in olio.','Campagna → Raccolta']
+        : ['🧺','Raccolta e frantoio','Pesa le olive pianta per pianta e registra la molitura: resa e costo al litro dell\'olio si calcolano da soli.','Campagna → Raccolta'],
     ['🔔','Avvisi sul telefono','Attiva le notifiche da ⚙︎: ti avvisiamo di gelate e piogge in arrivo, dei lavori in programma e, se gestisci le vendite, di nuovi clienti e ordini. Su iPhone aggiungi prima l\'app alla schermata Home.','⚙︎ → Notifiche'],
-    ['📌','Promemoria dei lavori','Programma i lavori da fare, come un trattamento da ripetere tra 15 giorni: il giorno stesso arriva l\'avviso a tutta la squadra.','Lavori → Da fare'],
+    ['📌','Promemoria dei lavori','Programma i lavori da fare, come un trattamento da ripetere tra 15 giorni: il giorno stesso arriva l\'avviso a tutta la squadra.','Campagna → Lavori'],
     ['🌤️','Il meteo del terreno','Previsioni a 7 giorni dove si trova l\'appezzamento, con avvisi su gelate, piogge e giorni adatti ai trattamenti.','Annata'],
-    ['🛒','Vendi l\'olio','Personalizza la vetrina, manda il link ai clienti e autorizzali: prenotano, accumulano punti oliva, e tu decidi il prezzo su ogni ordine.','Vendite','soldi'],
-    ['🛢️','Il magazzino dell\'olio','Quanto olio ti resta, annata per annata. Aggiungi anche quello degli anni precedenti, scegli quanti litri mettere in vendita e l\'app tiene il conto di prenotati e rimanenti.','Vendite → Magazzino','soldi'],
-    ['💶','I conti dell\'annata','Spese ed entrate per categoria, con il saldo dell\'anno: i costi di lavori e frantoio e gli incassi delle vendite entrano in automatico.','Conti','soldi'],
+    ['🛒','Vendi l\'olio','Personalizza la vetrina, manda il link ai clienti e autorizzali: prenotano, accumulano punti oliva, e tu decidi il prezzo su ogni ordine.','Olio → Ordini e Vetrina','soldi'],
+    ['🛢️','Il magazzino dell\'olio','Quanto olio ti resta, annata per annata. Aggiungi anche quello degli anni precedenti, scegli quanti litri mettere in vendita e l\'app tiene il conto di prenotati e rimanenti.','Olio → Magazzino','soldi'],
+    ['💶','I conti dell\'annata','Spese ed entrate per categoria, con il saldo dell\'anno: i costi di lavori e frantoio e gli incassi delle vendite entrano in automatico.','Annata → Conti','soldi'],
     ['👥','Lavora in squadra','Invita un manager o chi lavora in campo: il manager gestisce tutto, l\'agricoltore registra lavori e raccolte senza vedere conti e vendite. Puoi revocare l\'accesso quando vuoi.','⚙︎ → Collaboratori','team'],
     coll ? ['🚀','Iniziamo!', agr ? 'Quando finisci un lavoro in campo, registralo subito con il pulsante +: così resta nello storico dell\'uliveto e lo vede anche il titolare.' : 'Trovi tutto nelle schede in basso. Consiglio: aggiungi l\'app alla schermata Home dal menu del browser.', null]
       : ['🚀','Iniziamo!','Primo passo: crea l\'appezzamento con l\'indirizzo del terreno, poi aggiungi le piante. Consiglio: aggiungi l\'app alla schermata Home dal menu del browser.',null]
