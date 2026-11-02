@@ -25,6 +25,7 @@ Web app per gestire l'intero ciclo di un uliveto, **pianta per pianta**: lavori 
 - **QR code**: ogni pianta ha un QR univoco che apre direttamente la sua scheda; stampa delle etichette in fogli A4 da 12 (tutte o per appezzamento).
 - **Cosa c'è di nuovo**: dopo ogni aggiornamento una finestra mostra, una sola volta e filtrate per ruolo, le funzioni nuove con un pulsante per provarle; lo storico completo è in Impostazioni → Novità. Le novità si aggiungono in cima all'array `NOVITA` (vedi `CLAUDE.md`).
 - **Guida iniziale**: presentazione animata delle funzioni al primo accesso (scorrevole, saltabile), con schermate e testi adatti al ruolo (titolare, manager, agricoltore); richiamabile dalle impostazioni.
+- **Termini, privacy e consensi**: termini d'uso, informativa dell'app, condizioni di prenotazione e informativa del produttore (con i dati del venditore), regolamento dei punti oliva; accettazione alla registrazione e registro dei consensi con versione e data; notifiche degli annunci ai clienti solo con consenso; chiusura dell'account dall'app (Edge Function `account`); clienti importati cancellati se non accettano l'invito entro 12 mesi. La versione dei testi è in `LEGALE.versione`: aumentandola tutti gli utenti li riaccettano.
 - **Account e backup**: registrazione con email, recupero password, esportazione completa dei dati in JSON.
 
 ## Architettura
@@ -33,10 +34,11 @@ Web app per gestire l'intero ciclo di un uliveto, **pianta per pianta**: lavori 
 - Backend: [Supabase](https://supabase.com) (PostgreSQL + Auth), regione `eu-central-1` (Francoforte).
 - Sicurezza: Row Level Security su tutte le tabelle, ogni utente accede solo ai propri dati. La chiave nel codice è la chiave *publishable*, pensata per stare nel browser.
 - Notifiche: Web Push (service worker `sw.js`), Edge Function [`supabase/functions/notifiche`](supabase/functions/notifiche/index.ts) e job `pg_cron` (coda ogni minuto, promemoria e meteo ogni mattina). Le chiavi VAPID sono generate dalla funzione e restano nel database.
+- Chiusura dell'account e pulizia dei clienti importati: Edge Function [`supabase/functions/account`](supabase/functions/account/index.ts) (permessi del server; la pulizia parte da `pg_cron` ogni lunedì).
 - Link brevi di Google Maps: Edge Function [`supabase/functions/risolvi-link`](supabase/functions/risolvi-link/index.ts), che segue i reindirizzamenti solo verso host di Google.
 - Hosting: GitHub Pages.
 
-Lo schema del database è in [`supabase/schema.sql`](supabase/schema.sql) (gestione dell'uliveto) [`supabase/collaboratori.sql`](supabase/collaboratori.sql) (accesso condiviso per ruolo), [`supabase/notifiche.sql`](supabase/notifiche.sql) (promemoria e notifiche) [`supabase/vendite.sql`](supabase/vendite.sql) (vendita olio: i clienti scrivono solo tramite funzioni che verificano autorizzazione e disponibilità), [`supabase/clienti_importati.sql`](supabase/clienti_importati.sql) (clienti importati e inviti), [`supabase/magazzino.sql`](supabase/magazzino.sql) (magazzino dell'olio) e [`supabase/vetrina.sql`](supabase/vetrina.sql) (vetrina pubblica, bacheca, notifiche ai clienti, foto nello storage `vetrine`, tempo reale).
+Lo schema del database è in [`supabase/schema.sql`](supabase/schema.sql) (gestione dell'uliveto) [`supabase/collaboratori.sql`](supabase/collaboratori.sql) (accesso condiviso per ruolo), [`supabase/notifiche.sql`](supabase/notifiche.sql) (promemoria e notifiche) [`supabase/vendite.sql`](supabase/vendite.sql) (vendita olio: i clienti scrivono solo tramite funzioni che verificano autorizzazione e disponibilità), [`supabase/legale.sql`](supabase/legale.sql) (consensi, annunci con consenso, dati del venditore), [`supabase/clienti_importati.sql`](supabase/clienti_importati.sql) (clienti importati e inviti), [`supabase/magazzino.sql`](supabase/magazzino.sql) (magazzino dell'olio) e [`supabase/vetrina.sql`](supabase/vetrina.sql) (vetrina pubblica, bacheca, notifiche ai clienti, foto nello storage `vetrine`, tempo reale).
 
 ## Configurazione Supabase
 

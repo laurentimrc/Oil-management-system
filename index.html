@@ -443,6 +443,23 @@ a.btn{text-decoration:none;display:inline-block}
 .imp-col select{flex:0 0 46%;border:1px solid var(--glass-brd,var(--line));background:var(--glass-2,var(--card));border-radius:10px;padding:8px}
 .imp-riep{margin:10px 0 12px;padding-left:18px;font-size:14px}.imp-riep li{margin:3px 0}.imp-riep .att{color:#8a6400}
 @media (prefers-color-scheme: dark){.imp-riep .att{color:var(--gold)}}
+
+/* testi legali e consensi */
+.legale h4{font-size:15px;margin:16px 0 4px}
+.legale p{margin:0 0 6px;font-size:14px;line-height:1.55}
+.leg-tab{overflow-x:auto;margin:6px 0 8px}
+.leg-tab table{border-collapse:collapse;font-size:12.5px;min-width:100%}
+.leg-tab th,.leg-tab td{border:1px solid var(--line);padding:6px 7px;text-align:left;vertical-align:top}
+.leg-tab th{background:var(--olive-soft);font-weight:700}
+.piede-legale{text-align:center;font-size:12.5px;color:var(--muted);margin:14px 0 6px;line-height:1.8}
+.piede-legale a{color:var(--muted)}
+.chk a,.hint a{color:var(--olive);font-weight:600}
+.acc-ov{position:fixed;inset:0;z-index:45;background:rgba(20,22,15,.5);display:flex;align-items:flex-end;justify-content:center;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.acc{background:var(--glass-2,var(--bg));-webkit-backdrop-filter:blur(30px);backdrop-filter:blur(30px);width:100%;max-width:520px;border-radius:28px 28px 0 0;padding:24px 20px calc(20px + env(safe-area-inset-bottom));text-align:center;box-shadow:0 -12px 40px -10px rgba(0,0,0,.35)}
+.acc h2{margin:10px 0 4px}.acc p{font-size:14.5px;line-height:1.5;margin:0 0 12px}
+.acc-link{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
+.acc-link a{background:var(--olive-soft);color:var(--olive);border-radius:99px;padding:8px 14px;font-weight:600;font-size:14px;text-decoration:none}
+.acc .chk{text-align:left;margin-bottom:12px}
 /* ===== Liquid glass ===== */
 :root{
   --r:20px;
@@ -1174,6 +1191,7 @@ function stampaEtichette(ids){
   setTimeout(()=>window.print(), 150);
 }
 function apriDaLink(){
+  if (apriLegaleDaLink()) return;
   const hc = { '#ordini':'punti', '#prenota':'ordina', '#bacheca':'bacheca' }[location.hash];
   if (hc && S.user && modoCliente()) { history.replaceState(null, '', location.pathname + location.search); C.vista = hc; if (C.negozio) caricaCliente().then(renderCliente, renderCliente); return; }
   const t = location.hash.match(/^#tab=(home|piante|lavori|raccolta|vendite|conti)$/);
@@ -1627,7 +1645,10 @@ function openSettings(){
       <div class="row tap" onclick="closeSheet();apriGuida()"><div class="main"><div class="t">Guida dell'app</div><div class="s">Rivedi le funzioni principali</div></div><div class="muted">💡</div></div>
       <div class="row tap" onclick="formEtichette()"><div class="main"><div class="t">Stampa etichette QR</div><div class="s">Un QR per ogni pianta, da appendere al tronco</div></div><div class="muted">🏷️</div></div>
       <div class="row tap" onclick="esporta()"><div class="main"><div class="t">Esporta tutti i dati (JSON)</div><div class="s">Backup completo</div></div><div class="muted">↓</div></div>
-      <div class="row"><div class="main"><div class="t">Account</div><div class="s">${esc(S.user.email)}</div></div><button class="btn sm danger" onclick="logout()">Esci</button></div></div>`);
+      <div class="row tap" onclick="mostraLegale('termini')"><div class="main"><div class="t">Termini e condizioni</div><div class="s">Versione ${LEGALE.versione}</div></div><div class="muted">📄</div></div>
+      <div class="row tap" onclick="mostraLegale('privacy')"><div class="main"><div class="t">Privacy</div><div class="s">Quali dati usa l'app e perché</div></div><div class="muted">🔒</div></div>
+      <div class="row"><div class="main"><div class="t">Account</div><div class="s">${esc(S.user.email)}</div></div><button class="btn sm danger" onclick="logout()">Esci</button></div>
+      <div class="row tap" onclick="formChiudiAccount()"><div class="main"><div class="t" style="color:var(--red)">Chiudi l'account</div><div class="s">Cancella l'account e i dati</div></div><div class="muted">›</div></div></div>`);
 }
 async function esporta(){
   const json = JSON.stringify({esportato:new Date().toISOString(),appezzamenti:S.appezzamenti,piante:S.piante,interventi:S.interventi,raccolte:S.raccolte,moliture:S.moliture,movimenti:S.movimenti,magazzino_olio:S.magazzino||[]},null,2);
@@ -1641,6 +1662,159 @@ async function esporta(){
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json],{type:'application/json'})); a.download = filename; a.click();
 }
 async function logout(){ svuotaCache(); await sb.auth.signOut(); closeSheet(); }
+
+/* ===== Termini, privacy e consensi =====
+   I testi seguono la bozza "Il mio Uliveto – Termini, privacy e consensi". Cambiando un testo in modo sostanziale
+   aumenta LEGALE.versione: a ogni utente verrà chiesto di accettare di nuovo. */
+const LEGALE = { versione:'1.0', data:'2 novembre 2026',
+  gestore:{ nome:'Marco Laurenti', indirizzo:'[indirizzo da completare]', email:'[email di contatto da completare]', foro:'Milano' } };
+const VENDITORE_VUOTO = '[dato non ancora indicato dal produttore]';
+const venditoreDi = n => (n && (n.venditore || n.dati_legali)) || {};
+const datiVenditoreCompleti = n => { const v = venditoreDi(n); return !!(v.ragione_sociale && v.indirizzo && v.contatto); };
+function sezLeg(titolo, corpo){ return `<h4>${titolo}</h4>${corpo}`; }
+function tabLeg(intest, righe){ return `<div class="leg-tab"><table><tr>${intest.map(t => `<th>${t}</th>`).join('')}</tr>${righe.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</table></div>`; }
+function testoLegale(tipo, n){
+  const G = LEGALE.gestore, gest = `${esc(G.nome)}, ${esc(G.indirizzo)}, email ${esc(G.email)}`;
+  const V = venditoreDi(n), vNome = esc(V.ragione_sociale || n?.nome || VENDITORE_VUOTO);
+  const vDati = [V.ragione_sociale || n?.nome, V.indirizzo, V.piva && 'P. IVA ' + V.piva].filter(Boolean).map(esc).join(', ') || VENDITORE_VUOTO;
+  const vCont = esc(V.contatto || VENDITORE_VUOTO), prof = V.professionista === true;
+  const T = {
+    termini: ['Termini e condizioni d\'uso', [
+      ['1. Chi offre il servizio', `<p>Il mio Uliveto (“il servizio”) è offerto da ${gest} (“il gestore”).</p>`],
+      ['2. Cosa fa', `<p>Un'app per gestire un uliveto pianta per pianta (lavori, trattamenti, raccolta, frantoio, magazzino, conti) e raccogliere prenotazioni di olio dai propri clienti. Meteo, consigli stagionali e tempi di carenza sono indicativi: per i prodotti fitosanitari valgono sempre l'etichetta e le norme.</p>`],
+      ['3. Fase di test', `<p>Durante il test il servizio è gratuito e fornito “così com'è”: funzioni e testi possono cambiare e il servizio può essere interrotto. Esporta periodicamente i tuoi dati da Impostazioni. Prima di introdurre un prezzo ti avviseremo con almeno 30 giorni di anticipo e potrai recedere.</p>`],
+      ['4. Account', `<p>Servono un'email confermata e almeno 18 anni. Le credenziali sono personali: sei responsabile di ciò che accade con il tuo account.</p>`],
+      ['5. Collaboratori', `<p>Il titolare dell'uliveto può invitare un manager o un agricoltore e revocarli in ogni momento, e risponde delle persone che invita e dei permessi che assegna.</p>`],
+      ['6. Vendita dell\'olio', `<p>Il gestore fornisce solo lo strumento: non vende, non incassa e non è parte del contratto tra produttore e cliente. Il produttore è l'unico responsabile di prezzi, consegne, pagamenti, documenti fiscali, requisiti per vendere alimenti (registrazione, igiene, etichettatura), diritti dei consumatori, condizioni e informativa verso i propri clienti, programma punti oliva e premi promessi.</p>`],
+      ['7. Dati dei clienti', `<p>Per i dati dei propri clienti il produttore è titolare del trattamento; il gestore li tratta per suo conto come responsabile (art. 28 GDPR), solo per far funzionare l'app, con server nell'UE, accessi limitati e registrati, notifica di eventuali violazioni entro 48 ore, cancellazione entro 30 giorni dalla chiusura dell'account. Importando clienti o mandando inviti il produttore dichiara di avere una base giuridica per farlo.</p>`],
+      ['8. Uso corretto', `<p>Non è consentito usare il servizio per attività illecite o spam, caricare contenuti di terzi senza diritto, tentare di accedere ai dati di altri o aggirare le protezioni.</p>`],
+      ['9. I tuoi contenuti', `<p>Dati, foto e testi restano tuoi: ci concedi solo il permesso di conservarli e mostrarli per far funzionare il servizio, per esempio nella vetrina pubblica che scegli di attivare.</p>`],
+      ['10. Responsabilità', `<p>Il gestore cura il servizio con diligenza ma non garantisce che sia sempre disponibile o privo di errori. Nei limiti di legge non risponde di danni indiretti, mancati guadagni o decisioni prese sulla base dell'app. Restano salvi dolo, colpa grave e i diritti inderogabili del consumatore.</p>`],
+      ['11. Chiusura', `<p>Puoi chiudere l'account in ogni momento da Impostazioni: i dati vengono cancellati subito, salvo copie di sicurezza del fornitore che scadono entro 30 giorni. Il gestore può sospendere un account che viola questi termini, con preavviso salvo urgenza.</p>`],
+      ['12. Modifiche', `<p>Le modifiche sostanziali sono annunciate nell'app almeno 15 giorni prima e ti verrà chiesto di accettarle; se non le accetti puoi chiudere l'account.</p>`],
+      ['13. Legge e foro', `<p>Legge italiana. Per i consumatori è competente il giudice del luogo di residenza; negli altri casi il foro di ${esc(G.foro)}.</p>`]]],
+    privacy: ['Informativa privacy dell\'app', [
+      ['Titolare', `<p>${gest}. Non è nominato un responsabile della protezione dei dati (DPO).</p>`],
+      ['Quali dati e perché', tabLeg(['Dati','Finalità','Base giuridica','Conservazione'], [
+        ['Email, password cifrata, ruolo, accessi','Creare e proteggere l\'account','Contratto','Fino alla chiusura dell\'account'],
+        ['Appezzamenti con indirizzo e posizione, piante, lavori, raccolte, moliture, magazzino, conti, foto della vetrina','Far funzionare l\'app','Contratto','Fino alla chiusura dell\'account'],
+        ['Iscrizione alle notifiche e preferenze','Avvisi su meteo, lavori, vendite e squadra','Consenso, revocabile','Fino alla revoca'],
+        ['Indirizzo IP, errori, orari delle richieste','Sicurezza e risoluzione dei problemi','Legittimo interesse','Secondo i registri del fornitore'],
+        ['Consensi e prese visione','Dimostrare cosa hai accettato e quando','Obbligo di legge e legittimo interesse','Fino alla chiusura dell\'account']])],
+      ['Chi riceve i dati', tabLeg(['Fornitore','Ruolo','Dove'], [
+        ['Supabase Pte. Ltd.','Database, accessi, email di sistema, funzioni server','Server a Francoforte (UE); supporto e registri anche da Singapore e USA con clausole contrattuali standard'],
+        ['GitHub, Inc. (GitHub Pages)','Pubblica le pagine dell\'app (riceve l\'indirizzo IP)','USA'],
+        ['Open-Meteo','Previsioni meteo (riceve le coordinate del terreno)','—'],
+        ['OpenStreetMap Foundation','Suggerimenti di indirizzi (riceve l\'indirizzo digitato)','Regno Unito'],
+        ['Google, Apple, Mozilla','Consegnano le notifiche push (contenuto cifrato)','Secondo il browser'],
+        ['jsDelivr, cdnjs','Caricano librerie dell\'app (ricevono l\'indirizzo IP)','Rete globale']]) +
+        `<p>I dati non sono venduti né usati per pubblicità o profilazione. I collaboratori vedono i dati dell'uliveto secondo il ruolo assegnato.</p>`],
+      ['Memoria del browser', `<p>L'app salva sul dispositivo solo ciò che serve a funzionare: sessione, copia dei dati per aprirsi in fretta e lavorare senza rete, salvataggi in attesa, preferenze. Nessun cookie di profilazione o di statistica.</p>`],
+      ['I tuoi diritti', `<p>Accesso, rettifica, cancellazione (anche da Impostazioni → Chiudi l'account), limitazione, portabilità (Impostazioni → Esporta), opposizione: scrivi a ${esc(G.email)}. Puoi revocare il consenso alle notifiche in ogni momento. Puoi proporre reclamo al Garante per la protezione dei dati personali (garanteprivacy.it).</p>`]]],
+    condizioni: ['Condizioni di prenotazione', [
+      ['1. Chi vende', `<p>L'olio è venduto da ${vDati}, contatti ${vCont}. L'app Il mio Uliveto è solo lo strumento con cui prenoti: il suo gestore non è parte della vendita.</p>`],
+      ['2. Accesso', `<p>Per prenotare servono un account e l'autorizzazione del produttore, che può rifiutarla o revocarla. Se sei stato invitato sei già autorizzato.</p>`],
+      ['3. Prenotazione e conferma', `<p>La prenotazione è una richiesta e non ti impegna. Il contratto si conclude quando il produttore la conferma indicando il prezzo finale. Finché non è confermata puoi annullarla dall'app; dopo, contatta il produttore.</p>`],
+      ['4. Prezzi, consegna e pagamento', `<p>I prezzi del listino sono indicativi: fa fede quello confermato. Il produttore consegna all'indirizzo indicato, nelle zone e nei tempi descritti nella vetrina. Il pagamento avviene con le modalità concordate con il produttore: l'app non gestisce pagamenti. L'olio è limitato: oltre i litri disponibili le prenotazioni non vengono accettate.</p>`],
+      [prof ? '5. Diritto di recesso' : '5. Resi e problemi', prof
+        ? `<p>Hai 14 giorni dalla consegna per recedere senza motivo (artt. 52 e seguenti del Codice del Consumo) scrivendo a ${vCont}. Il recesso è escluso per le confezioni sigillate aperte dopo la consegna (art. 59, lett. e). Si applica la garanzia legale di conformità.</p>`
+        : `<p>Il venditore è un privato che vende occasionalmente: il Codice del Consumo non si applica. Per resi o problemi accordati direttamente con il produttore (${vCont}).</p>`],
+      ['6. Punti oliva', `<p>Gli ordini consegnati danno punti secondo il regolamento dei punti oliva. I punti non hanno valore in denaro.</p>`],
+      ['7. Dati personali e reclami', `<p>I tuoi dati sono trattati dal produttore secondo la sua informativa privacy. Per qualsiasi problema scrivi a ${vCont}. Legge italiana; foro del consumatore.</p>`]]],
+    'privacy-negozio': ['Informativa privacy per i clienti', [
+      ['Chi tratta i tuoi dati', `<p>${vDati}, contatti ${vCont}. Per gestire le prenotazioni usa l'app Il mio Uliveto, offerta da ${esc(G.nome)}, che tratta i dati per suo conto come responsabile del trattamento.</p>`],
+      ['Dati e finalità', tabLeg(['Dati','Perché','Base giuridica','Per quanto'], [
+        ['Nome, email, telefono, indirizzo di consegna, note per il citofono','Autorizzarti, ricevere le prenotazioni, consegnare','Contratto e misure precontrattuali','Finché resti cliente, poi 24 mesi'],
+        ['Ordini, prezzi, consegne, punti oliva','Gestire gli ordini e il programma punti','Contratto','Per il tempo richiesto dagli obblighi fiscali, se applicabili; altrimenti 24 mesi'],
+        ['Notifiche su conferme e consegne','Tenerti aggiornato','Consenso (permesso del browser)','Fino alla revoca'],
+        ['Notifiche di annunci e novità','Avvisarti di raccolta, olio nuovo, giorni di consegna','Consenso facoltativo','Fino alla revoca']])],
+      ['Se eri già cliente', `<p>Se il produttore ti ha invitato, ha inserito i dati che gli avevi dato in passato per proporti l'app (legittimo interesse a gestire il rapporto con chi ha già acquistato). Se non accetti l'invito entro 12 mesi i tuoi dati vengono cancellati dall'app. Puoi opporti in ogni momento rispondendo al messaggio o scrivendo a ${vCont}.</p>`],
+      ['Chi li vede', `<p>Solo il produttore e chi lavora con lui come manager. Non sono ceduti a terzi né usati per profilazione. I fornitori tecnici dell'app, con server a Francoforte (UE), sono elencati nell'informativa privacy dell'app.</p>`],
+      ['I tuoi diritti', `<p>Accesso, rettifica, cancellazione, limitazione, portabilità e opposizione, scrivendo a ${vCont}. Puoi modificare i tuoi dati da “I miei dati di consegna”, gestire le notifiche dall'area clienti e chiudere l'account. Puoi proporre reclamo al Garante per la protezione dei dati personali.</p>`],
+      ['Obbligatorietà', `<p>Nome, indirizzo e comune servono per consegnarti l'olio: senza non è possibile accettare prenotazioni.</p>`]]],
+    punti: ['Regolamento dei punti oliva', [
+      ['Promotore e partecipanti', `<p>Promotore: ${vDati}. Partecipano senza costi i clienti maggiorenni autorizzati dal produttore, residenti in Italia.</p>`],
+      ['Come si guadagnano', `<p>50 punti di benvenuto all'autorizzazione; per ogni ordine consegnato 20 punti più 10 per litro, arrotondati all'unità. Ordini annullati o non consegnati non danno punti.</p>`],
+      ['Livelli e premi', tabLeg(['Livello','Da','Premio'], LIVELLI.map(l => [`${l.ic} ${l.nome}`, `${l.da} punti`, esc((n?.vetrina?.premi || {})[l.k] || '—')]))
+        + `<p>Il premio si applica al primo ordine confermato dopo aver raggiunto il livello, un premio per livello.</p>`],
+      ['Regole', `<p>I punti non hanno valore in denaro, non sono convertibili né cedibili e valgono solo presso questo produttore. Si perdono con la chiusura dell'account o con la revoca dell'autorizzazione per abuso. Il produttore può cambiare i premi futuri con preavviso in bacheca; i livelli raggiunti restano.</p>`]]]
+  };
+  return T[tipo];
+}
+let LEG_NEG = null;   // dati del negozio per i testi rivolti ai clienti (vetrina pubblica o negozio del gestore)
+function mostraLegale(tipo, n){
+  const t = testoLegale(tipo, n || LEG_NEG || (C.pub) || (S.user && !modoCliente() ? negozio() : null)); if (!t) return;
+  openSheet(`<h3>${t[0]}</h3><div class="legale"><div class="muted">Versione ${LEGALE.versione} del ${LEGALE.data}</div>${t[1].map(([h, c]) => sezLeg(h, c)).join('')}</div>
+    <div class="actions"><button class="btn block" onclick="closeSheet()">Chiudi</button></div>`);
+}
+const linkLeg = (tipo, testo) => `<a href="#${tipo}" onclick="mostraLegale('${tipo}');return false">${testo}</a>`;
+function piedeLegale(negozioMode){
+  return `<div class="piede-legale">${negozioMode ? `${linkLeg('condizioni','Condizioni di prenotazione')} · ${linkLeg('privacy-negozio','Privacy')} · ${linkLeg('punti','Punti oliva')} · ` : ''}${linkLeg('termini','Termini')} · ${linkLeg('privacy','Privacy dell\'app')}</div>`;
+}
+function apriLegaleDaLink(){
+  const t = location.hash.slice(1);
+  if (['termini','privacy','condizioni','privacy-negozio','punti'].includes(t)) { history.replaceState(null, '', location.pathname + location.search); setTimeout(() => mostraLegale(t), 200); return true; }
+  return false;
+}
+
+/* Accettazione dei termini: alla registrazione (casella) e, per chi è già registrato, al primo accesso dopo un cambio di versione */
+const terminiKey = () => 'uliveto:termini:' + S.user?.id;
+async function controllaTermini(){
+  if (!S.user) return;
+  try { if (localStorage.getItem(terminiKey()) === LEGALE.versione) return; } catch(e){}
+  const { data, error } = await sb.from('consensi').select('id').eq('user_id', S.user.id).eq('tipo', 'termini').eq('versione', LEGALE.versione).limit(1);
+  if (error) return;   // senza rete riproviamo al prossimo avvio
+  const segna = () => { try { localStorage.setItem(terminiKey(), LEGALE.versione); } catch(e){} };
+  if (data?.length) return segna();
+  const m = S.user.user_metadata || {};
+  if (m.termini === LEGALE.versione) {   // accettati con la casella al momento della registrazione
+    const r = await sb.from('consensi').insert({ tipo:'termini', versione:LEGALE.versione, dettaglio:'registrazione ' + (m.termini_at || '') });
+    if (!r.error) segna(); return;
+  }
+  mostraAccettazione();
+}
+function mostraAccettazione(){
+  if ($('#accetta')) return;
+  document.body.insertAdjacentHTML('beforeend', `<div id="accetta" class="acc-ov" role="dialog" aria-modal="true" aria-label="Termini e privacy"><div class="acc">
+    <div class="nv-spark"><span>📄</span></div><h2>Termini e privacy</h2>
+    <p>Per continuare a usare Il mio Uliveto leggi e accetta i termini d'uso e l'informativa privacy (versione ${LEGALE.versione}).</p>
+    <div class="acc-link">${linkLeg('termini','📄 Termini e condizioni')}${linkLeg('privacy','🔒 Informativa privacy')}</div>
+    <label class="chk"><input type="checkbox" id="accChk"> Ho letto e accetto i Termini e condizioni e ho letto l'Informativa privacy.</label>
+    <button class="btn block" onclick="accettaTermini(this)">Continua</button>
+    <button class="link" onclick="logout().then(()=>$('#accetta')?.remove())">Non accetto: esci</button></div></div>`);
+}
+async function accettaTermini(b){
+  if (!$('#accChk').checked) return toast('Spunta la casella per continuare');
+  b.disabled = true;
+  const { error } = await sb.from('consensi').insert({ tipo:'termini', versione:LEGALE.versione });
+  if (error) { b.disabled = false; return fail(error); }
+  try { localStorage.setItem(terminiKey(), LEGALE.versione); } catch(e){}
+  $('#accetta').remove(); toast('Grazie ✓');
+}
+const registraConsenso = (tipo, extra = {}) => sb.from('consensi').insert({ tipo, versione:LEGALE.versione, ...extra }).then(r => { if (r.error) console.error(r.error); });
+
+/* Chiusura dell'account */
+function formChiudiAccount(){
+  const titolare = !modoCliente() && S.ruolo === 'owner';
+  openSheet(`<h3>Chiudi l'account</h3>
+    <div class="card warn"><h2>⚠️ Non si può annullare</h2><div style="font-size:14px;line-height:1.5">
+      ${modoCliente() ? 'Verranno cancellati il tuo account, i tuoi dati di consegna, le tue prenotazioni e i punti oliva presso tutti i produttori.'
+        : titolare ? 'Verranno cancellati il tuo account e tutto il tuo uliveto: piante, lavori, raccolte, conti, magazzino, il negozio con vetrina, clienti e ordini. I tuoi collaboratori perderanno l\'accesso.'
+        : 'Verrà cancellato il tuo account. L\'uliveto in cui collabori resta al titolare.'}</div></div>
+    ${titolare ? '<div class="actions" style="margin-top:0"><button class="btn sec block" onclick="esporta()">↓ Prima scarica una copia dei dati</button></div>' : ''}
+    <label class="f"><span>Per confermare scrivi ELIMINA</span><input id="chiudiConf" autocomplete="off" autocapitalize="characters"></label>
+    <div class="actions"><button class="btn sec" onclick="closeSheet()">Annulla</button><button class="btn danger" onclick="chiudiAccount(this)">Chiudi l'account</button></div>`);
+}
+async function chiudiAccount(b){
+  const conferma = ($('#chiudiConf').value || '').trim().toUpperCase();
+  if (conferma !== 'ELIMINA') return toast('Scrivi ELIMINA per confermare');
+  b.disabled = true; b.textContent = 'Chiudo…';
+  const { data, error } = await sb.functions.invoke('account', { body:{ azione:'chiudi', conferma } });
+  if (error || data?.error) { b.disabled = false; b.textContent = 'Chiudi l\'account'; return fail(data?.error || error); }
+  try { Object.keys(localStorage).filter(k => k.startsWith('uliveto:')).forEach(k => localStorage.removeItem(k)); } catch(e){}
+  closeSheet(); toast('Account chiuso. Grazie per aver usato Il mio Uliveto.');
+  setTimeout(() => logout(), 1200);
+}
 
 /* ===== Vendita olio: parte comune ===== */
 const SHOP_PARAM = new URLSearchParams(location.search).get('olio');
@@ -1690,6 +1864,7 @@ function htmlFormatoVetrina(f, extra = ''){
 }
 function htmlVetrina(d, o = {}){
   if (!d) return '';
+  if (d.venditore || d.dati_legali) LEG_NEG = d;
   const v = d.vetrina || {}, titolo = v.titolo || d.nome, sotto = v.sottotitolo || d.descrizione || '';
   const wa = numeroWa(v.whatsapp);
   return `<div class="vt" style="${accento(v)}">
@@ -1793,8 +1968,8 @@ function formRichiestaCliente(v){
         <label class="f"><span>CAP</span><input name="cap" value="${esc(c.cap || '')}" inputmode="numeric" autocomplete="postal-code"></label></div>
       <div class="grid2"><label class="f"><span>Provincia</span><input name="provincia" value="${esc(c.provincia || '')}" maxlength="2" placeholder="es. MI"></label>
         <label class="f"><span>Citofono, piano…</span><input name="note_indirizzo" value="${esc(c.note_indirizzo || '')}"></label></div>
-      <div class="privacy"><b>Informativa privacy (sintesi).</b> I dati inseriti (nome, email, telefono, indirizzo) sono trattati dal produttore titolare di questo negozio al solo scopo di gestire le tue prenotazioni e consegnare l'olio. Non sono ceduti a terzi e sono conservati su server nell'Unione Europea. Puoi chiederne in ogni momento la modifica o la cancellazione contattando il produttore.</div>
-      <label class="chk"><input type="checkbox" name="privacy" required ${c.privacy_at ? 'checked' : ''}> Ho letto l'informativa e acconsento al trattamento dei miei dati per gestire le prenotazioni.</label>
+      <div class="privacy">I tuoi dati servono al produttore per autorizzarti, ricevere le prenotazioni e consegnarti l'olio. Non sono ceduti a terzi e sono conservati su server nell'Unione Europea.</div>
+      ${C.cliente ? '' : `<label class="chk"><input type="checkbox" name="privacy" required> Ho letto l'${linkLeg('privacy-negozio','informativa privacy')} e le ${linkLeg('condizioni','condizioni di prenotazione')} di ${esc(C.negozio?.nome || 'questo produttore')}.</label>`}
       <button class="btn block" type="submit">${C.cliente ? 'Salva i dati' : inv ? 'Conferma e inizia a prenotare' : 'Invia la richiesta'}</button>
     </form></div>`;
   $('#frmCli').onsubmit = async e => {
@@ -1805,6 +1980,7 @@ function formRichiestaCliente(v){
     if (error) { b.disabled = false; return fail(error); }
     if (inv) { try { localStorage.removeItem(invitoKey()); } catch(e){} C.vista = 'ordina'; }
     const primo = !C.cliente;
+    if (primo) registraConsenso('informativa_cliente', { negozio_id:C.negozio.id, dettaglio: inv ? 'invito accettato' : 'richiesta di accesso' });
     toast(inv ? 'Benvenuto! Puoi già prenotare 🫒' : primo ? 'Richiesta inviata ✓' : 'Dati aggiornati ✓'); await caricaCliente(); renderCliente(); if (primo) liveCliente();
   };
 }
@@ -1851,10 +2027,10 @@ function cQty(id, d){ C.qty[id] = Math.max(0, Math.min(200, (C.qty[id] || 0) + d
 function viewBacheca(){
   const v = $('#cv');
   let visti = ''; try { visti = localStorage.getItem(annunciVistiKey()) || ''; } catch(e){}
-  v.innerHTML = C.annunci.length ? C.annunci.map(a => `<div class="annuncio ${a.created_at > visti ? 'nuovo' : ''}" style="${accento(C.pub?.vetrina)}">
+  v.innerHTML = (C.cliente?.annunci_ok ? '' : `<div class="card" style="display:flex;gap:10px;align-items:center"><div style="font-size:26px">🔔</div><div class="main" style="flex:1;font-size:13.5px">Vuoi una notifica quando arriva un nuovo annuncio?</div><button class="btn sm" onclick="impostaAnnunci(true)">Sì, avvisami</button></div>`) + (C.annunci.length ? C.annunci.map(a => `<div class="annuncio ${a.created_at > visti ? 'nuovo' : ''}" style="${accento(C.pub?.vetrina)}">
       <div class="an-emoji">${esc(a.emoji)}</div><div class="main"><div class="an-top"><b>${esc(a.titolo)}</b><span>${quandoFa(a.created_at)}</span></div>
       ${a.testo ? `<p>${esc(a.testo)}</p>` : ''}</div></div>`).join('')
-    : `<div class="card"><div class="empty">📣 Qui trovi le novità del produttore: raccolta, olio nuovo, giorni di consegna. Per ora non ci sono annunci.</div></div>`;
+    : `<div class="card"><div class="empty">📣 Qui trovi le novità del produttore: raccolta, olio nuovo, giorni di consegna. Per ora non ci sono annunci.</div></div>`);
   try { if (C.annunci[0]) localStorage.setItem(annunciVistiKey(), C.annunci[0].created_at); } catch(e){}
 }
 function quandoFa(ts){
@@ -1883,19 +2059,35 @@ function viewPunti(){
       ${o.nota_gestore ? `<div class="riepilogo" style="margin-bottom:0">💬 ${esc(o.nota_gestore)}</div>` : ''}
       ${o.stato === 'richiesta' ? `<div class="actions"><button class="btn danger sm" onclick="annullaOrdineCliente('${o.id}')">Annulla la prenotazione</button></div>` : ''}
     </div>`).join('') : '<div class="empty">Non hai ancora prenotazioni.</div>'}</div>
-    <div class="actions"><button class="btn sec" onclick="formRichiestaCliente($('#view'))">I miei dati di consegna</button></div>`;
+    <div class="actions"><button class="btn sec" onclick="formRichiestaCliente($('#view'))">I miei dati di consegna</button></div>
+    ${piedeLegale(true)}<div class="piede-legale"><a href="#" onclick="formChiudiAccount();return false">Chiudi l'account</a></div>`;
   statoNotificheCliente();
 }
 function cardNotificheCliente(){
-  return `<div class="card" id="notiCli"><h2>🔔 Avvisami sul telefono</h2><div class="muted" style="margin-bottom:8px">Ricevi subito conferme, consegne e annunci del produttore.</div>
-    <button class="btn sec block" onclick="attivaNotifiche().then(statoNotificheCliente)">Attiva le notifiche</button></div>`;
+  return `<div class="card" id="notiCli"><h2>🔔 Avvisami sul telefono</h2><div class="muted" style="margin-bottom:8px">Ricevi subito la conferma e la consegna dei tuoi ordini.</div>
+    <button class="btn sec block" onclick="attivaNotifiche().then(statoNotificheCliente)">Attiva le notifiche</button></div>
+    ${switchAnnunci()}`;
+}
+function switchAnnunci(){
+  const on = !!C.cliente?.annunci_ok;
+  return `<div class="card" id="annCli"><label class="switch"><div class="main"><div style="font-weight:600">📣 Annunci e novità</div>
+      <div class="muted" style="font-size:12.5px">Una notifica quando ${esc(C.negozio?.nome || 'il produttore')} pubblica in bacheca: raccolta, olio nuovo, giorni di consegna. Puoi toglierla quando vuoi.</div></div>
+    <input type="checkbox" ${on ? 'checked' : ''} onchange="impostaAnnunci(this.checked, this)"></label></div>`;
+}
+async function impostaAnnunci(v, el){
+  const { error } = await sb.rpc('imposta_annunci', { p_negozio:C.negozio.id, p_valore:v, p_versione:LEGALE.versione });
+  if (error) { if (el) el.checked = !v; return fail(error); }
+  C.cliente.annunci_ok = v;
+  toast(v ? 'Ti avviseremo dei nuovi annunci 📣' : 'Niente più notifiche per gli annunci');
+  if (v && pushSupportate() && !(await iscrizioneCorrente().catch(() => null))) attivaNotifiche().then(statoNotificheCliente);
+  if (C.vista === 'bacheca') renderCliente();
 }
 async function statoNotificheCliente(){
   const box = $('#notiCli'); if (!box) return;
   if (!pushSupportate()) { box.querySelector('.btn')?.remove(); box.querySelector('.muted').innerHTML = iOS() && !standalone()
       ? 'Su iPhone aggiungi prima questa pagina alla schermata Home (Condividi → Aggiungi alla schermata Home) e aprila da lì.' : 'Questo browser non supporta le notifiche.'; return; }
   const sub = await iscrizioneCorrente().catch(() => null);
-  if (sub && $('#notiCli')) $('#notiCli').innerHTML = '<h2>🔔 Notifiche attive</h2><div class="muted">Riceverai qui conferme, consegne e annunci del produttore.</div>';
+  if (sub && $('#notiCli')) $('#notiCli').innerHTML = '<h2>🔔 Notifiche attive</h2><div class="muted">Riceverai qui conferme e consegne dei tuoi ordini' + (C.cliente?.annunci_ok ? ' e gli annunci del produttore.' : '. Per gli annunci attiva anche l\'interruttore qui sotto.') + '</div>';
 }
 async function annullaOrdineCliente(id){
   if (!confirm('Vuoi annullare questa prenotazione?')) return;
@@ -1985,16 +2177,25 @@ function disegnaFormVetrina(){
       ${sw('mostra_disponibilita', 'Litri ancora disponibili', true)}
       ${sw('prezzi_pubblici', 'Prezzi anche a chi non è ancora autorizzato', false)}</div>
     <div class="card"><h2>🎁 Premi dei punti oliva</h2>
-      <div class="muted" style="margin:-4px 0 8px;font-size:13px">I clienti accumulano punti con gli ordini consegnati. Scrivi cosa ricevono a ogni livello (facoltativo).</div>
-      ${LIVELLI.slice(1).map(l => `<label class="f"><span>${l.ic} ${l.nome} · da ${l.da} punti</span><input value="${esc(v.premi[l.k] || '')}" oninput="VT.vetrina.premi['${l.k}']=this.value" placeholder="${{ ramoscello:'es. sconto 5% sul prossimo ordine', oliva:'es. consegna gratuita', ulivo:'es. una bottiglia da 0,5 L in omaggio', secolare:'es. visita all\'uliveto e degustazione' }[l.k]}"></label>`).join('')}</div>
+      <div class="muted" style="margin:-4px 0 8px;font-size:13px">I clienti accumulano punti con gli ordini consegnati. Scrivi cosa ricevono a ogni livello (facoltativo). Scegli <b>sconti sul prezzo o olio in più</b>: regali di altro tipo possono richiedere un regolamento con cauzione (operazioni a premio).</div>
+      ${LIVELLI.slice(1).map(l => `<label class="f"><span>${l.ic} ${l.nome} · da ${l.da} punti</span><input value="${esc(v.premi[l.k] || '')}" oninput="VT.vetrina.premi['${l.k}']=this.value;controllaPremi()" placeholder="${{ ramoscello:'es. sconto 5% sul prossimo ordine', oliva:'es. consegna gratuita', ulivo:'es. 0,5 L di olio in più nel prossimo ordine', secolare:'es. 1 L di olio in più nel prossimo ordine' }[l.k]}"></label>`).join('')}
+      <div id="premiAvviso" class="hint" style="color:#8a6400"></div>
+      <div style="margin-top:4px">${linkLeg('punti','Vedi il regolamento che leggono i clienti')}</div></div>
     <div class="actions"><button class="btn sec" onclick="anteprimaVetrina(true)">👀 Anteprima</button><button class="btn" onclick="salvaVetrina()">Salva</button></div>`);
+}
+const PREMIO_SEMPLICE = /(sconto|%|€|olio|litr|\bl\b|bottigli|latt[ae]|consegna gratuita|gratis la consegna|spedizione gratuita)/i;
+function controllaPremi(){
+  const box = $('#premiAvviso'); if (!box) return;
+  const altri = Object.entries(VT?.vetrina?.premi || {}).filter(([, t]) => t && t.trim() && !PREMIO_SEMPLICE.test(t));
+  box.innerHTML = altri.length ? `⚠️ ${altri.map(([k]) => LIVELLI.find(l => l.k === k)?.nome).join(', ')}: un premio diverso da sconti o olio in più può essere un'operazione a premio (DPR 430/2001), con regolamento e cauzione. Verifica prima di offrirlo.` : '';
 }
 function datiVetrinaCorrenti(){
   const n = negozio();
   return { id:n.id, nome:n.nome, descrizione:n.descrizione, attivo:n.attivo, note_consegna:n.note_consegna,
     vetrina: VT ? VT.vetrina : n.vetrina || {}, copertina: VT ? VT.copertina : n.copertina_url, galleria: VT ? VT.galleria : n.galleria || [],
     formati: S.formati.filter(f => f.attivo).map(f => ({ ...f, foto:f.foto_url, prezzo: (VT ? VT.vetrina : n.vetrina || {}).prezzi_pubblici ? f.prezzo : null })),
-    disponibili: ((VT ? VT.vetrina : n.vetrina || {}).mostra_disponibilita ?? true) && n.litri_in_vendita != null ? n.litri_in_vendita - sum(S.ordini.filter(o => o.stato !== 'annullato'), litriOrdine) : null };
+    disponibili: ((VT ? VT.vetrina : n.vetrina || {}).mostra_disponibilita ?? true) && n.litri_in_vendita != null ? n.litri_in_vendita - sum(S.ordini.filter(o => o.stato !== 'annullato'), litriOrdine) : null,
+    venditore: n.dati_legali || {} };
 }
 function anteprimaVetrina(daEditor){
   const d = datiVetrinaCorrenti();
@@ -2162,6 +2363,8 @@ function viewVendite(){
       <div class="shoplink">${esc(shopUrl(n.slug))}</div>
       <div class="actions" style="margin-top:0;flex-wrap:wrap"><button class="btn sec sm" onclick="copiaLink()">📋 Copia</button><button class="btn sec sm" onclick="condividiLink()">📤 Condividi</button>
         <button class="btn sec sm" onclick="qrNegozio()">🔳 QR</button><button class="btn sec sm" onclick="formNegozio()">⚙︎ Impostazioni</button></div></div>
+    ${datiVenditoreCompleti(n) ? '' : `<div class="card warn"><h2>🧾 Completa i dati del venditore</h2><div style="font-size:13.5px">Nome, indirizzo e contatto compaiono nelle condizioni e nella privacy che i clienti leggono prima di registrarsi.</div>
+      <div class="actions"><button class="btn" onclick="formNegozio()">Completa</button></div></div>`}
     <div class="card"><h2>🎨 Vetrina<span class="sp"></span><button class="btn sm sec" onclick="anteprimaVetrina()">👀 Anteprima</button></h2>
       <div class="vt-mini tap" onclick="formVetrina()" style="${accento(n.vetrina)};${n.copertina_url ? `background-image:url('${esc(n.copertina_url)}')` : ''}">
         <div><small>🫒 ${esc(n.nome)}</small><b>${esc(n.vetrina?.titolo || n.nome)}</b></div></div>
@@ -2211,8 +2414,18 @@ function formNegozio(){
     {name:'descrizione',label:'Presentazione per i clienti',type:'textarea',value:n.descrizione,ph:'es. Olio extravergine del nostro uliveto in Molise, raccolto a mano.'},
     {name:'note_consegna',label:'Informazioni sulla consegna',type:'textarea',value:n.note_consegna,ph:'es. Consegno il sabato a Milano e Monza. Pagamento alla consegna.'},
     {name:'litri_in_vendita',label:'Litri messi in vendita',type:'number',value:n.litri_in_vendita,hint:`In magazzino: ${num(olioEntrato())} L (olio ${new Date().getFullYear()}: ${num(olioAnnata())} L). Non puoi superarli. Lascia vuoto per non limitare le prenotazioni.`},
-    {name:'attivo',label:'Prenotazioni',type:'select',options:[['true','Aperte'],['false','Chiuse']],value:String(n.attivo ?? true),empty:false}],
+    {name:'attivo',label:'Prenotazioni',type:'select',options:[['true','Aperte'],['false','Chiuse']],value:String(n.attivo ?? true),empty:false},
+    {name:'v_ragione_sociale',label:'Nome o ragione sociale del venditore',value:n.dati_legali?.ragione_sociale,ph:'es. Mario Rossi, oppure Az. Agr. Rossi',sez:'venditore'},
+    {name:'v_indirizzo',label:'Indirizzo',value:n.dati_legali?.indirizzo,ph:'Via, numero, CAP, comune',sez:'venditore'},
+    {name:'v_piva',label:'Partita IVA (se ce l\'hai)',value:n.dati_legali?.piva,half:true,sez:'venditore'},
+    {name:'v_contatto',label:'Email o telefono per i clienti',value:n.dati_legali?.contatto,half:true,sez:'venditore'},
+    {name:'v_professionista',label:'Come vendi',type:'select',empty:false,value:String(n.dati_legali?.professionista ?? false),sez:'venditore',
+      options:[['false','Privato: vendo occasionalmente l\'olio della famiglia'],['true','Impresa agricola o professionista']]}],
+    sezioni:{ venditore:{ t:`🧾 Dati del venditore${datiVenditoreCompleti(n) ? '' : ' · da completare'}`, open:!datiVenditoreCompleti(n) && !!n.id } },
+    extra:`<div class="hint" style="margin-top:-4px">I dati del venditore compaiono nelle condizioni di prenotazione e nell'informativa privacy che i tuoi clienti leggono prima di registrarsi. ${linkLeg('condizioni','Vedi le condizioni')} · ${linkLeg('privacy-negozio','Vedi la privacy')}</div>`,
     onSubmit: async v => {
+      v.dati_legali = { ragione_sociale:v.v_ragione_sociale || '', indirizzo:v.v_indirizzo || '', piva:v.v_piva || '', contatto:v.v_contatto || '', professionista:v.v_professionista === 'true' };
+      Object.keys(v).filter(k => k.startsWith('v_')).forEach(k => delete v[k]);
       v.slug = slugDa(v.slug); v.attivo = v.attivo === 'true';
       if (v.slug.length < 3) throw new Error('Il link deve avere almeno 3 caratteri');
       if (v.litri_in_vendita !== n.litri_in_vendita) controllaLitriVendita(v.litri_in_vendita);
@@ -2266,7 +2479,7 @@ function schedaCliente(id){
 /* ===== Clienti inseriti dal gestore: a mano o da Excel/CSV, poi invitati ===== */
 function testoInvito(c){
   const n = negozio(), link = shopUrl(n.slug) + '&invito=' + encodeURIComponent(c.invito || '');
-  return `Ciao ${(c.nome || '').split(' ')[0]}! Da quest'anno puoi prenotare l'olio di ${n.nome} dal telefono. Ho già inserito i tuoi dati: apri il link, crea l'account e controlla l'indirizzo. Avrai subito 50 punti oliva di benvenuto 🫒\n${link}`;
+  return `Ciao ${(c.nome || '').split(' ')[0]}! Da quest'anno puoi prenotare l'olio di ${n.nome} dal telefono. Ho già inserito i tuoi dati: apri il link, crea l'account e controlla l'indirizzo. Avrai subito 50 punti oliva di benvenuto 🫒\n${link}\n\nSe non vuoi ricevere altri messaggi, rispondimi NO.`;
 }
 async function invitaCliente(id, via){
   const c = clienteDi(id); if (!c?.invito) return toast('Questo cliente ha già accettato l\'invito');
@@ -2294,13 +2507,15 @@ function formCliente(id){
     {name:'cap',label:'CAP',value:c.cap,half:true},
     {name:'provincia',label:'Provincia',value:c.provincia,half:true,ph:'es. MI'},
     {name:'note',label:'Citofono, piano…',value:c.note_indirizzo,half:true}],
-    extra: id ? '' : '<div class="hint" style="margin-top:-2px">Il cliente sarà già autorizzato. Dopo il salvataggio puoi mandargli l\'invito su WhatsApp o per email.</div>',
+    extra: id ? '' : '<div class="hint" style="margin-top:-2px">Il cliente sarà già autorizzato. Dopo il salvataggio puoi mandargli l\'invito su WhatsApp o per email.</div><label class="chk"><input type="checkbox" id="cliDich"> Questa persona ha già acquistato da me e posso contattarla per proporre la prenotazione.</label>',
     onSubmit: async v => {
       if (!v.telefono && !v.email) throw new Error('Serve almeno il telefono o l\'email per mandare l\'invito');
+      if (!id && !$('#cliDich')?.checked) throw new Error('Spunta la conferma per aggiungere il cliente');
       if (id) { const { error } = await sb.from('clienti').update({ nome:v.nome, telefono:v.telefono, email:v.email ? v.email.toLowerCase() : null, indirizzo:v.indirizzo || '',
           comune:v.comune || '', cap:v.cap, provincia:(v.provincia || '').toUpperCase() || null, note_indirizzo:v.note }).eq('id', id); if (error) throw error; return; }
       const { data, error } = await sb.rpc('importa_clienti', { p_negozio:negozio().id, p_righe:[v] }); if (error) throw error;
       if (!data?.importati) throw new Error('C\'è già un cliente con questo telefono o questa email');
+      registraConsenso('import_clienti', { negozio_id:negozio().id, dettaglio:'1 cliente inserito a mano' });
     } });
 }
 
@@ -2376,12 +2591,15 @@ function disegnaImport(){
         ${tutte.length - valide.length ? `<li>${tutte.length - valide.length} righe senza nome verranno saltate</li>` : ''}
         ${senzaContatto ? `<li class="att">${senzaContatto} senza telefono né email: non potrai mandargli l'invito</li>` : ''}
         ${senzaInd ? `<li class="att">${senzaInd} senza indirizzo completo: lo inseriranno loro accettando l'invito</li>` : ''}</ul>
+      <label class="chk"><input type="checkbox" id="impDich"> Confermo che queste persone hanno già acquistato da me e che posso contattarle per proporre la prenotazione.</label>
       <button class="btn block" ${valide.length ? '' : 'disabled'} onclick="confermaImport(this)">📥 Importa ${valide.length} ${valide.length === 1 ? 'cliente' : 'clienti'}</button></div>`;
 }
 async function confermaImport(b){
+  if (!$('#impDich')?.checked) return toast('Spunta la conferma prima di importare');
   const valide = righeImport().filter(o => o.nome); b.disabled = true; b.textContent = 'Importo…';
   const { data, error } = await sb.rpc('importa_clienti', { p_negozio:negozio().id, p_righe:valide });
   if (error) { b.disabled = false; b.textContent = 'Riprova'; return fail(error); }
+  registraConsenso('import_clienti', { negozio_id:negozio().id, dettaglio:`${data.importati} importati da ${IMP.file}`.slice(0, 200) });
   IMP = null; closeSheet(); S.tab = 'vendite'; S.olio = 'ordini'; await refresh();
   toast(`✓ ${data.importati} ${data.importati === 1 ? 'importato' : 'importati'}${data.gia_presenti ? ` · ${data.gia_presenti} già ${data.gia_presenti === 1 ? 'presente' : 'presenti'}` : ''}${data.senza_nome ? ` · ${data.senza_nome} senza nome` : ''}`);
 }
@@ -2709,6 +2927,11 @@ registraSW();
    Ogni voce: ic (icona), t (titolo), d (descrizione), facoltativi perm ('soldi' | 'struttura' | 'team')
    per mostrarla solo a chi può usarla, cta (testo del pulsante) e vai (funzione che porta alla novità). */
 const NOVITA = [
+  { n:14, data:'2026-11-02', titolo:'Termini, privacy e consensi', voci:[
+    { ic:'📄', t:'Termini e informativa privacy', d:'Li trovi in Impostazioni e in fondo alle pagine. Alla registrazione si accettano con una casella; chi è già registrato li accetta una volta.' },
+    { ic:'🧾', t:'Dati del venditore', d:'In Olio → Vetrina → Impostazioni indica nome, indirizzo e contatto: compaiono nelle condizioni di prenotazione e nella privacy che leggono i tuoi clienti.', perm:'soldi', cta:'Completa', vai:() => { S.tab = 'vendite'; S.olio = 'vetrina'; render(); setTimeout(formNegozio, 300); } },
+    { ic:'📣', t:'Annunci solo a chi li vuole', d:'I clienti ricevono la notifica degli annunci solo se la attivano. In bacheca gli annunci restano visibili a tutti.', perm:'soldi' },
+    { ic:'🗑️', t:'Chiudi l\'account', d:'Da Impostazioni puoi chiudere l\'account e cancellare i tuoi dati in qualsiasi momento.' } ]},
   { n:13, data:'2026-11-02', titolo:'I tuoi clienti di sempre', voci:[
     { ic:'📥', t:'Importa chi ha già comprato', d:'In Olio → Ordini carichi un file Excel o CSV (o li aggiungi a mano): l\'app riconosce nome, telefono, email e indirizzo e salta i doppioni.', perm:'soldi', cta:'Importa', vai:() => { S.tab = 'vendite'; S.olio = 'ordini'; render(); setTimeout(formImporta, 300); } },
     { ic:'✉️', t:'Invito personale su WhatsApp o email', d:'Ogni cliente importato è già autorizzato e riceve il suo link: crea l\'account, ritrova i suoi dati e prenota subito. Ti arriva un avviso quando accetta.', perm:'soldi' } ]},
@@ -2880,21 +3103,26 @@ function renderAuth(){
     <form id="authf" class="card">
       <label class="f"><span>Email</span><input name="email" type="email" required autocomplete="email"></label>
       <label class="f"><span>Password</span><input name="password" type="password" required minlength="6" autocomplete="${authMode==='login'?'current-password':'new-password'}"></label>
+      ${authMode==='signup' ? `<label class="chk" style="text-align:left"><input type="checkbox" name="termini" required> Ho letto e accetto i ${linkLeg('termini','Termini e condizioni')} e ho letto l'${linkLeg('privacy','Informativa privacy')}.</label>` : ''}
       <button class="btn block" type="submit">${authMode==='login'?'Accedi':'Crea account'}</button>
     </form>
     <button class="link" onclick="authMode=authMode==='login'?'signup':'login';renderAuth()">${authMode==='login'?'Prima volta? Crea un account':'Hai già un account? Accedi'}</button>
-    ${authMode==='login'?'<button class="link" style="font-weight:400;color:var(--muted)" onclick="resetPwd()">Password dimenticata?</button>':''}</div>`;
+    ${authMode==='login'?'<button class="link" style="font-weight:400;color:var(--muted)" onclick="resetPwd()">Password dimenticata?</button>':''}
+    ${piedeLegale(shop)}</div>`;
+  apriLegaleDaLink();
   $('#authf').onsubmit = async e => {
     e.preventDefault(); const fd = new FormData(e.target);
     const creds = { email: fd.get('email'), password: fd.get('password') };
     const opts = { emailRedirectTo: APP_URL };
     if (shop) opts.data = { ruolo:'cliente', negozio: SHOP_PARAM.toLowerCase() };
+    if (authMode === 'signup') opts.data = { ...(opts.data || {}), termini:LEGALE.versione, termini_at:new Date().toISOString() };
     const { data, error } = authMode==='login' ? await sb.auth.signInWithPassword(creds) : await sb.auth.signUp({ ...creds, options:opts });
     if (error) return fail(error);
     if (authMode==='signup' && !data.session) toast('Controlla la tua email per confermare l\'account, poi accedi.');
   };
   if (shop) sb.rpc('vetrina_pubblica', { p_slug: SHOP_PARAM }).then(({ data }) => {
     if (!data || !$('#shopNome')) return;
+    LEG_NEG = data;
     $('.auth').classList.add('con-vetrina');
     $('.auth').insertAdjacentHTML('afterbegin', htmlVetrina(data));
     $('#shopNome').textContent = 'Prenota il nostro olio';
@@ -2927,6 +3155,7 @@ sb.auth.onAuthStateChange((_e, session) => {
 });
 async function avvia(){
   S._lastTab = null;
+  if (S.user) setTimeout(controllaTermini, 1500);
   if (!S.user) { CACHE_TAB.forEach(t=>S[t]=[]); S._caricato = false; S._daCache = false; return render(); }
   if (modoCliente()) {
     showSplash();

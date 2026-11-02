@@ -17,3 +17,4 @@ ruoli `anon` e `authenticated`).
 
 Non eseguirli sul database di produzione: inseriscono utenti di prova.
 - `clienti_importati.sql` — import di vecchi clienti e inviti: solo titolare e manager importano, nessuna notifica a vuoto, il profilo si collega solo con il codice d'invito o l'email confermata (17 controlli; applicare prima `clienti_importati.sql`)
+- `legale.sql` — registro dei consensi (solo propri, non modificabile), annunci come notifica solo a chi li ha attivati, dati del venditore nella vetrina pubblica (10 controlli; applicare prima `legale.sql`). Chiusura dell'account e pulizia degli importati sono nella Edge Function `account`.

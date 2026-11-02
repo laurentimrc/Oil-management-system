@@ -5,3 +5,4 @@
 - Se la funzione cambia cosa possono fare i ruoli, aggiorna anche `guidaSchermate()` (guida iniziale) e i controlli in `supabase/test/`.
 - I permessi si controllano nel database (RLS), non solo nell'interfaccia: ogni nuova tabella deve avere RLS e regole per titolare, manager, agricoltore.
 - Testi dell'interfaccia in italiano, frasi semplici.
+- Testi legali (termini, privacy, condizioni, regolamento punti) in `testoLegale()`: se li cambi in modo sostanziale aumenta `LEGALE.versione`, così ogni utente li riaccetta; tieni allineata la bozza "Il mio Uliveto – Termini, privacy e consensi".

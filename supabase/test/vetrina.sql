@@ -39,6 +39,10 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub',o,'email','o5@t.it')::text, true);
   insert into annunci(negozio_id,titolo,testo) values (neg,'Bozza prima dell''approvazione','x');
   update clienti set stato='approvato' where user_id=c;
+  -- dal 2026-11 gli annunci arrivano come notifica solo a chi li ha attivati (legale.sql)
+  perform set_config('request.jwt.claims', json_build_object('sub',c,'email','c5@t.it')::text, true);
+  perform imposta_annunci(neg, true, '1.0');
+  perform set_config('request.jwt.claims', json_build_object('sub',o,'email','o5@t.it')::text, true);
   insert into annunci(negozio_id,emoji,titolo,testo) values (neg,'🫒','Olio nuovo pronto!','Raccolta 2026 disponibile da sabato.');
   perform set_config('request.jwt.claims', json_build_object('sub',c,'email','c5@t.it')::text, true);
   select count(*) into n from annunci; r := r||E'\n'||case when n=2 then 'OK' else 'ERRORE' end||' 9) Il cliente autorizzato legge la bacheca ('||n||')';
