@@ -434,6 +434,15 @@ a.btn{text-decoration:none;display:inline-block}
 .pos-stato{font-size:14px;margin-top:3px}
 .pos-pianta .btn{white-space:nowrap}
 .vuoto-inv{font-size:13.5px;color:var(--muted);line-height:1.5;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+
+/* import clienti */
+.file-btn{display:block;text-align:center;cursor:pointer}
+.imp-col{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.imp-col:first-of-type{border-top:0}
+.imp-col>div{flex:1;min-width:0}.imp-col b{display:block;font-size:14px}.imp-col span{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.imp-col select{flex:0 0 46%;border:1px solid var(--glass-brd,var(--line));background:var(--glass-2,var(--card));border-radius:10px;padding:8px}
+.imp-riep{margin:10px 0 12px;padding-left:18px;font-size:14px}.imp-riep li{margin:3px 0}.imp-riep .att{color:#8a6400}
+@media (prefers-color-scheme: dark){.imp-riep .att{color:var(--gold)}}
 /* ===== Liquid glass ===== */
 :root{
   --r:20px;
@@ -1643,6 +1652,10 @@ const shopUrl = slug => QR_BASE + '?olio=' + encodeURIComponent(slug);
 const eurOpt = n => n == null ? '' : eur(n);
 const indCompleto = x => [x.indirizzo, [x.cap, x.comune].filter(Boolean).join(' ') + (x.provincia ? ` (${x.provincia})` : '')].filter(v => v && v.trim()).join(', ');
 const mapsDir = x => 'https://www.google.com/maps/dir/?api=1&destination=' + encodeURIComponent(indCompleto(x));
+const INVITO_PARAM = new URLSearchParams(location.search).get('invito');
+const invitoKey = () => 'uliveto:invito:' + slugCliente();
+if (INVITO_PARAM && SHOP_PARAM) { try { localStorage.setItem('uliveto:invito:' + SHOP_PARAM.toLowerCase(), INVITO_PARAM); } catch(e){} }
+function invitoSalvato(){ try { return localStorage.getItem(invitoKey()); } catch(e){ return null; } }
 function modoCliente(){ return !!SHOP_PARAM || S.user?.user_metadata?.ruolo === 'cliente'; }
 function slugCliente(){
   let mem = null; try { mem = localStorage.getItem('uliveto:negozio'); } catch(e){}
@@ -1722,6 +1735,8 @@ async function caricaCliente(){
   ]);
   for (const r of [cl, fo, or, ne]) if (r.error) throw r.error;
   C.cliente = cl.data; C.formati = fo.data || []; C.ordini = or.data || []; C.annunci = an.data || [];
+  C.invitoDati = null;
+  if (!C.cliente) { const iv = await sb.rpc('invito_cliente', { p_negozio:n, p_invito:invitoSalvato() }); if (!iv.error && iv.data) C.invitoDati = iv.data; }
   C.owner = ne.data?.owner_id === uid || ge.data === true; C.titolare = ne.data?.owner_id === uid; C.noteConsegna = ne.data?.note_consegna || C.pub?.note_consegna || '';
   if (ne.data) C.negozio.attivo = ne.data.attivo;
   C.disp = null;
@@ -1743,7 +1758,7 @@ function renderCliente(){
   if (C.owner) { v.innerHTML = `<div class="card anteprima-banner"><b>👀 Anteprima</b> · Così vede la vetrina chi apre il tuo link.
       <a class="btn sm" style="margin-left:auto;text-decoration:none" href="${QR_BASE}">Torna alla gestione</a></div>${htmlVetrina(C.pub)}`; return; }
   const c = C.cliente;
-  if (!c) { v.innerHTML = htmlVetrina(C.pub) + '<div id="cv"></div>'; return formRichiestaCliente($('#cv')); }
+  if (!c) { v.innerHTML = C.invitoDati ? '<div id="cv"></div>' + htmlVetrina(C.pub, { compatta:true }) : htmlVetrina(C.pub) + '<div id="cv"></div>'; return formRichiestaCliente($('#cv')); }
   if (c.stato === 'in_attesa') {
     v.innerHTML = `<div class="card" style="text-align:center"><div style="font-size:46px">⏳</div><h2 style="justify-content:center">Richiesta inviata</h2>
       <p class="muted">Il produttore deve autorizzarti prima che tu possa prenotare. Appena lo farà, questa pagina si aggiorna da sola e ricevi 50 punti oliva di benvenuto.</p>
@@ -1766,9 +1781,10 @@ function renderCliente(){
   ({ ordina:viewPrenota, bacheca:viewBacheca, punti:viewPunti }[C.vista] || viewPrenota)();
 }
 function formRichiestaCliente(v){
-  const c = C.cliente || {};
-  v.innerHTML = `<div class="card"><h2>👋 Chiedi di poter prenotare</h2>
-    <p class="muted" style="margin-top:0">Inserisci i tuoi dati: il produttore li userà per autorizzarti e per consegnarti l'olio. Appena autorizzato ricevi <b>50 punti oliva</b> di benvenuto.</p>
+  const inv = !C.cliente && C.invitoDati, c = C.cliente || inv || {};
+  v.innerHTML = `<div class="card"><h2>${inv ? `👋 Ciao ${esc((inv.nome || '').split(' ')[0])}, bentornato!` : '👋 Chiedi di poter prenotare'}</h2>
+    <p class="muted" style="margin-top:0">${inv ? `Il produttore ha già inserito i tuoi dati: controlla che l'indirizzo sia giusto e conferma. <b>Sei già autorizzato</b>: subito dopo puoi prenotare e hai <b>50 punti oliva</b> di benvenuto.`
+      : `Inserisci i tuoi dati: il produttore li userà per autorizzarti e per consegnarti l'olio. Appena autorizzato ricevi <b>50 punti oliva</b> di benvenuto.`}</p>
     <form id="frmCli">
       <label class="f"><span>Nome e cognome</span><input name="nome" required value="${esc(c.nome || '')}" autocomplete="name"></label>
       <label class="f"><span>Telefono</span><input name="telefono" type="tel" value="${esc(c.telefono || '')}" autocomplete="tel"></label>
@@ -1779,15 +1795,17 @@ function formRichiestaCliente(v){
         <label class="f"><span>Citofono, piano…</span><input name="note_indirizzo" value="${esc(c.note_indirizzo || '')}"></label></div>
       <div class="privacy"><b>Informativa privacy (sintesi).</b> I dati inseriti (nome, email, telefono, indirizzo) sono trattati dal produttore titolare di questo negozio al solo scopo di gestire le tue prenotazioni e consegnare l'olio. Non sono ceduti a terzi e sono conservati su server nell'Unione Europea. Puoi chiederne in ogni momento la modifica o la cancellazione contattando il produttore.</div>
       <label class="chk"><input type="checkbox" name="privacy" required ${c.privacy_at ? 'checked' : ''}> Ho letto l'informativa e acconsento al trattamento dei miei dati per gestire le prenotazioni.</label>
-      <button class="btn block" type="submit">${C.cliente ? 'Salva i dati' : 'Invia la richiesta'}</button>
+      <button class="btn block" type="submit">${C.cliente ? 'Salva i dati' : inv ? 'Conferma e inizia a prenotare' : 'Invia la richiesta'}</button>
     </form></div>`;
   $('#frmCli').onsubmit = async e => {
     e.preventDefault(); const f = new FormData(e.target), b = e.target.querySelector('[type=submit]'); b.disabled = true;
-    const { error } = await sb.rpc('richiedi_accesso', { p_negozio:C.negozio.id, p_nome:f.get('nome'), p_telefono:f.get('telefono'), p_indirizzo:f.get('indirizzo'),
-      p_comune:f.get('comune'), p_cap:f.get('cap'), p_provincia:f.get('provincia'), p_note_indirizzo:f.get('note_indirizzo') });
+    const dati = { p_negozio:C.negozio.id, p_nome:f.get('nome'), p_telefono:f.get('telefono'), p_indirizzo:f.get('indirizzo'),
+      p_comune:f.get('comune'), p_cap:f.get('cap'), p_provincia:f.get('provincia'), p_note_indirizzo:f.get('note_indirizzo') };
+    const { error } = inv ? await sb.rpc('accetta_invito_cliente', { ...dati, p_invito:invitoSalvato() }) : await sb.rpc('richiedi_accesso', dati);
     if (error) { b.disabled = false; return fail(error); }
+    if (inv) { try { localStorage.removeItem(invitoKey()); } catch(e){} C.vista = 'ordina'; }
     const primo = !C.cliente;
-    toast(primo ? 'Richiesta inviata ✓' : 'Dati aggiornati ✓'); await caricaCliente(); renderCliente(); if (primo) liveCliente();
+    toast(inv ? 'Benvenuto! Puoi già prenotare 🫒' : primo ? 'Richiesta inviata ✓' : 'Dati aggiornati ✓'); await caricaCliente(); renderCliente(); if (primo) liveCliente();
   };
 }
 function viewPrenota(){
@@ -2174,9 +2192,15 @@ function viewVendite(){
           <div class="t">${esc(c.nome || 'Cliente')} · ${num(litriOrdine(o), 2)} L</div>
           <div class="s">${fdate(o.created_at.slice(0,10))} · ${esc(o.comune)}${o.data_preferita ? ' · consegna ' + fdate(o.data_preferita) : ''}</div></div>
           <div style="text-align:right">${badgeSt(o.stato, STATI_ORD)}<div class="n" style="margin-top:3px">${eurOpt(o.totale)}</div></div></div>`; }).join('') || '<div class="empty">Nessun ordine in questa lista.</div>'}</div>
-    <div class="card"><h2>👥 Clienti (${S.clienti.filter(c => c.stato === 'approvato').length} autorizzati)</h2>
-      ${S.clienti.filter(c => c.stato !== 'in_attesa').map(c => { const p = puntiDa(c, S.ordini); return `<div class="row tap" onclick="schedaCliente('${c.id}')"><div class="main"><div class="t">${esc(c.nome)}</div>
-        <div class="s">${esc(c.comune)} · ${S.ordini.filter(o => o.cliente_id === c.id && o.stato !== 'annullato').length} ordini${p ? ` · ${p.liv.ic} ${p.punti} punti` : ''}</div></div>${badgeSt(c.stato, STATI_CLI)}</div>`; }).join('') || '<div class="empty">Ancora nessun cliente. Manda il link a chi vuoi.</div>'}</div>`;
+    ${(() => { const da = S.clienti.filter(c => !c.user_id); return da.length ? `<div class="card"><h2>✉️ Da invitare (${da.length})<span class="sp"></span></h2>
+      <div class="muted" style="margin:-4px 0 6px">Clienti che hai inserito tu: sono già autorizzati. Manda a ognuno il suo invito personale.</div>
+      ${da.map(c => `<div class="row tap" onclick="schedaCliente('${c.id}')"><div class="main"><div class="t">${esc(c.nome)}</div>
+        <div class="s">${esc([c.comune, c.telefono || c.email].filter(Boolean).join(' · ')) || '—'}${c.invitato_at ? ' · invitato il ' + fdate(c.invitato_at.slice(0,10)) : ''}</div></div>
+        <button class="btn sm ${c.invitato_at ? 'sec' : ''}" onclick="event.stopPropagation();invitaCliente('${c.id}')">${c.invitato_at ? 'Di nuovo' : 'Invita'}</button></div>`).join('')}</div>` : ''; })()}
+    <div class="card"><h2>👥 Clienti (${(n => n + (n === 1 ? ' registrato' : ' registrati'))(S.clienti.filter(c => c.stato === 'approvato' && c.user_id).length)})<span class="sp"></span>
+        <button class="btn sm sec" onclick="formCliente()">+ Cliente</button><button class="btn sm sec" onclick="formImporta()">📥 Importa</button></h2>
+      ${S.clienti.filter(c => c.stato !== 'in_attesa' && c.user_id).map(c => { const p = puntiDa(c, S.ordini); return `<div class="row tap" onclick="schedaCliente('${c.id}')"><div class="main"><div class="t">${esc(c.nome)}</div>
+        <div class="s">${esc(c.comune)} · ${S.ordini.filter(o => o.cliente_id === c.id && o.stato !== 'annullato').length} ordini${p ? ` · ${p.liv.ic} ${p.punti} punti` : ''}</div></div>${badgeSt(c.stato, STATI_CLI)}</div>`; }).join('') || '<div class="empty">Ancora nessun cliente registrato. Manda il link a chi vuoi, oppure importa chi ha già comprato da te con 📥 Importa.</div>'}</div>`;
 }
 function formNegozio(){
   const n = negozio() || {};
@@ -2223,14 +2247,143 @@ async function statoCliente(id, stato){
 }
 function schedaCliente(id){
   const c = clienteDi(id), ord = S.ordini.filter(o => o.cliente_id === id);
-  openSheet(`<h3>👤 ${esc(c.nome)}</h3><div class="card">
+  openSheet(`<h3>👤 ${esc(c.nome)}</h3>
+    ${!c.user_id ? `<div class="card warn"><h2>✉️ Non si è ancora registrato</h2>
+      <div style="font-size:14px">L'hai inserito tu ed è già autorizzato. Mandagli il suo invito: aprendolo crea l'account, ritrova i suoi dati e può prenotare subito.${c.invitato_at ? `<br><span class="muted">Ultimo invito: ${fdate(c.invitato_at.slice(0,10))}</span>` : ''}</div>
+      <div class="actions" style="flex-wrap:wrap">${c.telefono ? `<button class="btn" onclick="invitaCliente('${id}','wa')">💬 WhatsApp</button>` : ''}${c.email ? `<button class="btn ${c.telefono ? 'sec' : ''}" onclick="invitaCliente('${id}','mail')">✉️ Email</button>` : ''}
+        <button class="btn sec" onclick="invitaCliente('${id}','copia')">📋 Copia invito</button></div></div>` : ''}
+    <div class="card">
       <div class="row"><div class="main">Stato</div>${badgeSt(c.stato, STATI_CLI)}</div>
       ${c.email ? `<div class="row"><div class="main">Email</div><a class="n" href="mailto:${esc(c.email)}">${esc(c.email)}</a></div>` : ''}
       ${c.telefono ? `<div class="row"><div class="main">Telefono</div><a class="n" href="tel:${esc(c.telefono)}">${esc(c.telefono)}</a></div>` : ''}
       <div class="row"><div class="main">Indirizzo<div class="s" style="white-space:normal">${esc(indCompleto(c))}${c.note_indirizzo ? ' · ' + esc(c.note_indirizzo) : ''}</div></div><a class="n" href="${mapsDir(c)}" target="_blank" rel="noopener">Mappa ↗</a></div>
       <div class="row"><div class="main">Ordini</div><div class="n">${ord.filter(o => o.stato !== 'annullato').length} · ${eur(sum(ord.filter(o => o.stato === 'consegnato'), o => o.totale))} incassati</div></div>
-      ${(p => p ? `<div class="row"><div class="main">Punti oliva<div class="s">${p.pros ? `mancano ${p.mancano} punti a ${p.pros.ic} ${p.pros.nome}` : 'livello massimo'}</div></div><div class="n">${p.liv.ic} ${p.liv.nome} · ${p.punti}</div></div>` : '')(puntiDa(c, S.ordini))}</div>
-    <div class="actions">${c.stato === 'approvato' ? `<button class="btn danger" onclick="statoCliente('${id}','bloccato')">Blocca</button>` : `<button class="btn" onclick="statoCliente('${id}','approvato')">Autorizza</button>`}</div>`);
+      ${(p => p && c.user_id ? `<div class="row"><div class="main">Punti oliva<div class="s">${p.pros ? `mancano ${p.mancano} punti a ${p.pros.ic} ${p.pros.nome}` : 'livello massimo'}</div></div><div class="n">${p.liv.ic} ${p.liv.nome} · ${p.punti}</div></div>` : '')(puntiDa(c, S.ordini))}</div>
+    <div class="actions">${!c.user_id ? `<button class="btn danger" onclick="eliminaCliente('${id}')">Elimina</button><button class="btn sec" onclick="formCliente('${id}')">Modifica dati</button>`
+      : c.stato === 'approvato' ? `<button class="btn danger" onclick="statoCliente('${id}','bloccato')">Blocca</button>` : `<button class="btn" onclick="statoCliente('${id}','approvato')">Autorizza</button>`}</div>`);
+}
+
+/* ===== Clienti inseriti dal gestore: a mano o da Excel/CSV, poi invitati ===== */
+function testoInvito(c){
+  const n = negozio(), link = shopUrl(n.slug) + '&invito=' + encodeURIComponent(c.invito || '');
+  return `Ciao ${(c.nome || '').split(' ')[0]}! Da quest'anno puoi prenotare l'olio di ${n.nome} dal telefono. Ho già inserito i tuoi dati: apri il link, crea l'account e controlla l'indirizzo. Avrai subito 50 punti oliva di benvenuto 🫒\n${link}`;
+}
+async function invitaCliente(id, via){
+  const c = clienteDi(id); if (!c?.invito) return toast('Questo cliente ha già accettato l\'invito');
+  via ||= c.telefono ? 'wa' : c.email ? 'mail' : 'copia';
+  const t = testoInvito(c);
+  if (via === 'wa') window.open('https://wa.me/' + numeroWa(c.telefono) + '?text=' + encodeURIComponent(t), '_blank', 'noopener');
+  else if (via === 'mail') location.href = 'mailto:' + encodeURIComponent(c.email) + '?subject=' + encodeURIComponent('Prenota l\'olio di ' + negozio().nome) + '&body=' + encodeURIComponent(t);
+  else { try { await navigator.clipboard.writeText(t); toast('Invito copiato: incollalo dove vuoi'); } catch(e) { prompt('Copia l\'invito:', t); } }
+  const { error } = await sb.from('clienti').update({ invitato_at:new Date().toISOString() }).eq('id', id);
+  if (!error) { c.invitato_at = new Date().toISOString(); if (S.tab === 'vendite' && !$('#sheet').classList.contains('open')) viewVendite(); }
+}
+async function eliminaCliente(id){
+  if (!confirm('Eliminare questo cliente? Il suo invito smetterà di funzionare.')) return;
+  const { error } = await sb.from('clienti').delete().eq('id', id); if (error) return fail(error);
+  closeSheet(); await refresh(); toast('Eliminato');
+}
+function formCliente(id){
+  const c = id ? clienteDi(id) : {};
+  openForm({ title: id ? 'Modifica cliente' : 'Nuovo cliente', fields:[
+    {name:'nome',label:'Nome e cognome',required:true,value:c.nome},
+    {name:'telefono',label:'Telefono',type:'tel',value:c.telefono,half:true,ph:'per l\'invito su WhatsApp'},
+    {name:'email',label:'Email',type:'email',value:c.email,half:true},
+    {name:'indirizzo',label:'Indirizzo di consegna',value:c.indirizzo,ph:'Via e numero civico'},
+    {name:'comune',label:'Comune',value:c.comune,half:true},
+    {name:'cap',label:'CAP',value:c.cap,half:true},
+    {name:'provincia',label:'Provincia',value:c.provincia,half:true,ph:'es. MI'},
+    {name:'note',label:'Citofono, piano…',value:c.note_indirizzo,half:true}],
+    extra: id ? '' : '<div class="hint" style="margin-top:-2px">Il cliente sarà già autorizzato. Dopo il salvataggio puoi mandargli l\'invito su WhatsApp o per email.</div>',
+    onSubmit: async v => {
+      if (!v.telefono && !v.email) throw new Error('Serve almeno il telefono o l\'email per mandare l\'invito');
+      if (id) { const { error } = await sb.from('clienti').update({ nome:v.nome, telefono:v.telefono, email:v.email ? v.email.toLowerCase() : null, indirizzo:v.indirizzo || '',
+          comune:v.comune || '', cap:v.cap, provincia:(v.provincia || '').toUpperCase() || null, note_indirizzo:v.note }).eq('id', id); if (error) throw error; return; }
+      const { data, error } = await sb.rpc('importa_clienti', { p_negozio:negozio().id, p_righe:[v] }); if (error) throw error;
+      if (!data?.importati) throw new Error('C\'è già un cliente con questo telefono o questa email');
+    } });
+}
+
+/* Import da Excel o CSV: riconosce le colonne, mostra un'anteprima e poi carica tutto in una volta */
+const CAMPI_IMPORT = [['','— non importare —'],['nome','Nome (o nome e cognome)'],['cognome','Cognome'],['telefono','Telefono'],['email','Email'],
+  ['indirizzo','Indirizzo'],['civico','Numero civico'],['comune','Comune'],['cap','CAP'],['provincia','Provincia'],['note','Note / citofono']];
+const SINONIMI_IMPORT = [['cognome',/^(cognome|surname|last ?name)$/],['nome',/^(nome|nominativo|cliente|nome e cognome|nome cognome|ragione sociale|name|full ?name|first ?name|contatto)$/],
+  ['telefono',/(tel|cell|phone|mobile|whatsapp|numero$)/],['email',/(e-?mail|posta)/],['civico',/(civico|n\.? ?civ|^n\.?$|^numero civico$)/],
+  ['indirizzo',/(indirizzo|via|address|strada|recapito)/],['cap',/^(cap|c\.a\.p\.?|zip|postal|codice postale)/],['comune',/(comune|citt|paese|localit|city|town)/],
+  ['provincia',/^(prov|provincia|pr|sigla)/],['note',/(note|citofono|interno|piano|scala)/]];
+const normCol = t => String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[_]+/g, ' ').trim();
+const indovinaCampo = t => (SINONIMI_IMPORT.find(([, re]) => re.test(normCol(t))) || [''])[0];
+function caricaSheetJS(){
+  if (window.XLSX) return Promise.resolve();
+  return caricaSheetJS._p ||= new Promise((ok, ko) => { const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; sc.onload = ok; sc.onerror = () => { caricaSheetJS._p = null; ko(new Error('Non riesco a caricare il lettore di Excel: controlla la connessione')); };
+    document.head.appendChild(sc); });
+}
+function formImporta(){
+  openSheet(`<h3>📥 Importa i tuoi clienti</h3>
+    <div class="card"><div style="font-size:14px;line-height:1.5">Carica un file <b>Excel</b> (.xlsx, .xls) o <b>CSV</b> con chi ha già comprato da te: una riga per cliente, con nome e almeno telefono o email. Indirizzo, comune e CAP se li hai.</div>
+      <div class="muted" style="margin-top:8px">Saranno già autorizzati: dopo l'import mandi a ognuno il suo invito. Chi è già nell'elenco (stesso telefono o email) viene saltato.</div>
+      <label class="btn block file-btn" style="margin-top:12px">📄 Scegli il file<input type="file" accept=".xlsx,.xls,.ods,.csv,.txt" onchange="leggiFileImport(this.files[0])" hidden></label>
+      <button class="link" style="margin-top:6px" onclick="scaricaModelloImport()">Scarica un modello vuoto da compilare</button></div>
+    <div id="impAnteprima"></div>`);
+}
+function scaricaModelloImport(){
+  const csv = '\ufeffNome;Cognome;Telefono;Email;Indirizzo;Civico;Comune;CAP;Provincia;Note\nLucia;Bianchi;333 1234567;lucia@esempio.it;Via Roma;12;Milano;20121;MI;citofono Bianchi\n';
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' })); a.download = 'clienti-modello.csv'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+async function leggiFileImport(file){
+  if (!file) return; const box = $('#impAnteprima'); box.innerHTML = '<div class="card"><div class="empty">Leggo il file…</div></div>';
+  try {
+    await caricaSheetJS();
+    let wb; const buf = await file.arrayBuffer();
+    if (/\.(csv|txt)$/i.test(file.name)) {
+      let txt; try { txt = new TextDecoder('utf-8', { fatal:true }).decode(buf); } catch(e) { txt = new TextDecoder('windows-1252').decode(buf); }
+      txt = txt.replace(/^\ufeff/, ''); const riga = txt.split(/\r?\n/)[0] || '';
+      const sep = [';', ',', '\t'].sort((a, b) => riga.split(b).length - riga.split(a).length)[0];
+      wb = XLSX.read(txt, { type:'string', FS:sep, raw:true });
+    } else wb = XLSX.read(buf, { type:'array' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const righe = XLSX.utils.sheet_to_json(ws, { header:1, raw:false, defval:'' }).filter(r => r.some(x => String(x).trim()));
+    if (!righe.length) throw new Error('Il file è vuoto');
+    // la riga d'intestazione è la prima (tra le prime 5) con almeno due colonne riconosciute
+    let h = righe.slice(0, 5).findIndex(r => r.filter(x => indovinaCampo(x)).length >= 2);
+    const intest = h >= 0 ? righe[h] : righe[0].map((_, i) => 'Colonna ' + (i + 1));
+    IMP = { righe: righe.slice(h >= 0 ? h + 1 : 0), intest, mappa: intest.map(x => h >= 0 ? indovinaCampo(x) : ''), file:file.name };
+    disegnaImport();
+  } catch(e) { box.innerHTML = ''; fail(e); }
+}
+let IMP = null;
+function righeImport(){
+  return IMP.righe.map(r => { const o = {}; IMP.mappa.forEach((k, i) => { const v = String(r[i] ?? '').trim(); if (k && v) o[k] = o[k] ? o[k] + ' ' + v : v; });
+    if (o.cognome) { o.nome = [o.nome, o.cognome].filter(Boolean).join(' '); delete o.cognome; }
+    if (o.civico) { o.indirizzo = [o.indirizzo, o.civico].filter(Boolean).join(' '); delete o.civico; }
+    if (o.cap && /^\d{1,4}$/.test(o.cap)) o.cap = o.cap.padStart(5, '0');
+    if (o.telefono) o.telefono = o.telefono.replace(/\.0+$/, '');
+    return o; });
+}
+function disegnaImport(){
+  const tutte = righeImport(), valide = tutte.filter(o => o.nome), senzaContatto = valide.filter(o => !o.telefono && !o.email).length;
+  const senzaInd = valide.filter(o => !o.indirizzo || !o.comune).length;
+  $('#impAnteprima').innerHTML = `<div class="card"><h2>🔎 ${esc(IMP.file)}</h2>
+      <div class="muted" style="margin:-4px 0 8px">Controlla che ogni colonna sia associata al dato giusto.</div>
+      ${IMP.intest.map((t, i) => `<div class="imp-col"><div><b>${esc(t || 'Colonna ' + (i + 1))}</b><span>${esc(IMP.righe.slice(0, 2).map(r => r[i]).filter(Boolean).join(' · ').slice(0, 40))}</span></div>
+        <select onchange="IMP.mappa[${i}]=this.value;disegnaImport()">${CAMPI_IMPORT.map(([k, l]) => `<option value="${k}" ${IMP.mappa[i] === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>`).join('')}</div>
+    <div class="card"><h2>👀 Anteprima</h2>
+      ${valide.slice(0, 4).map(o => `<div class="row"><div class="main"><div class="t">${esc(o.nome)}</div><div class="s" style="white-space:normal">${esc([o.telefono, o.email].filter(Boolean).join(' · ') || 'nessun contatto')}<br>📍 ${esc(indCompleto(o) || 'nessun indirizzo')}</div></div></div>`).join('') || '<div class="empty">Nessuna riga con il nome: associa la colonna del nome.</div>'}
+      ${valide.length > 4 ? `<div class="muted">…e altri ${valide.length - 4}</div>` : ''}
+      <ul class="imp-riep"><li><b>${valide.length}</b> clienti da importare</li>
+        ${tutte.length - valide.length ? `<li>${tutte.length - valide.length} righe senza nome verranno saltate</li>` : ''}
+        ${senzaContatto ? `<li class="att">${senzaContatto} senza telefono né email: non potrai mandargli l'invito</li>` : ''}
+        ${senzaInd ? `<li class="att">${senzaInd} senza indirizzo completo: lo inseriranno loro accettando l'invito</li>` : ''}</ul>
+      <button class="btn block" ${valide.length ? '' : 'disabled'} onclick="confermaImport(this)">📥 Importa ${valide.length} ${valide.length === 1 ? 'cliente' : 'clienti'}</button></div>`;
+}
+async function confermaImport(b){
+  const valide = righeImport().filter(o => o.nome); b.disabled = true; b.textContent = 'Importo…';
+  const { data, error } = await sb.rpc('importa_clienti', { p_negozio:negozio().id, p_righe:valide });
+  if (error) { b.disabled = false; b.textContent = 'Riprova'; return fail(error); }
+  IMP = null; closeSheet(); S.tab = 'vendite'; S.olio = 'ordini'; await refresh();
+  toast(`✓ ${data.importati} ${data.importati === 1 ? 'importato' : 'importati'}${data.gia_presenti ? ` · ${data.gia_presenti} già ${data.gia_presenti === 1 ? 'presente' : 'presenti'}` : ''}${data.senza_nome ? ` · ${data.senza_nome} senza nome` : ''}`);
 }
 function gestisciOrdine(id){
   const o = S.ordini.find(x => x.id === id); if (!o) return;
@@ -2556,6 +2709,9 @@ registraSW();
    Ogni voce: ic (icona), t (titolo), d (descrizione), facoltativi perm ('soldi' | 'struttura' | 'team')
    per mostrarla solo a chi può usarla, cta (testo del pulsante) e vai (funzione che porta alla novità). */
 const NOVITA = [
+  { n:13, data:'2026-11-02', titolo:'I tuoi clienti di sempre', voci:[
+    { ic:'📥', t:'Importa chi ha già comprato', d:'In Olio → Ordini carichi un file Excel o CSV (o li aggiungi a mano): l\'app riconosce nome, telefono, email e indirizzo e salta i doppioni.', perm:'soldi', cta:'Importa', vai:() => { S.tab = 'vendite'; S.olio = 'ordini'; render(); setTimeout(formImporta, 300); } },
+    { ic:'✉️', t:'Invito personale su WhatsApp o email', d:'Ogni cliente importato è già autorizzato e riceve il suo link: crea l\'account, ritrova i suoi dati e prenota subito. Ti arriva un avviso quando accetta.', perm:'soldi' } ]},
   { n:12, data:'2026-11-02', titolo:'Piante più chiare', voci:[
     { ic:'🟢', t:'Lo stato si vede a colpo d\'occhio', d:'Ogni pianta ha un pallino colorato (sana, sotto osservazione, malata, giovane, morta). Tocca un colore in cima all\'elenco per vedere solo quelle piante.', cta:'Vedi le piante', vai:() => { S.tab = 'piante'; S.vista = 'lista'; render(); } },
     { ic:'📍', t:'Posizione senza coordinate', d:'Nella scheda della pianta usa «Sono qui» accanto al tronco oppure «Sulla mappa»: niente più latitudine e longitudine da scrivere.', perm:'struttura' },
@@ -2717,6 +2873,7 @@ function guidaSeNuova(){
 let authMode = 'login';
 function renderAuth(){
   const shop = !!SHOP_PARAM;
+  if (shop && INVITO_PARAM && authMode === 'login' && !renderAuth._inv) { renderAuth._inv = true; authMode = 'signup'; }
   $('#app').innerHTML = `<div class="auth"><div class="logo">🫒</div>
     ${shop ? `<h1 id="shopNome">Prenota l'olio</h1><p id="shopDesc">Accedi o crea un account per chiedere di poter prenotare l'olio di questa annata.</p>`
            : `<h1>Il mio Uliveto</h1><p>Piante, lavori, raccolta, olio e conti in un solo posto.</p>`}
@@ -2741,7 +2898,8 @@ function renderAuth(){
     $('.auth').classList.add('con-vetrina');
     $('.auth').insertAdjacentHTML('afterbegin', htmlVetrina(data));
     $('#shopNome').textContent = 'Prenota il nostro olio';
-    $('#shopDesc').textContent = 'Accedi o crea un account per chiedere di poter prenotare. Chi viene autorizzato riceve 50 punti oliva di benvenuto.';
+    $('#shopDesc').textContent = INVITO_PARAM ? 'Sei stato invitato: crea l\'account (o accedi) e troverai i tuoi dati già inseriti. Potrai prenotare subito.'
+      : 'Accedi o crea un account per chiedere di poter prenotare. Chi viene autorizzato riceve 50 punti oliva di benvenuto.';
   });
 }
 
