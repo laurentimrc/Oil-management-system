@@ -383,6 +383,87 @@ label.chk input{margin-top:3px;width:18px;height:18px}
 .auth p{text-align:center;color:var(--muted);margin:0 0 22px}
 .auth .vt p{text-align:left;margin:0;color:inherit}.auth .vt .vt-hero p{margin-top:8px}.auth .vt .vt-annata p,.auth .vt .vt-prod p{margin-top:4px}.auth .vt .vt-prod p{color:var(--muted)}
 .link{background:none;border:0;color:var(--olive);font-weight:600;cursor:pointer;padding:8px;width:100%}
+
+/* ===== Liquid glass ===== */
+:root{
+  --r:20px;
+  --glass:rgba(255,255,255,.58); --glass-nav:rgba(250,250,244,.70); --glass-2:rgba(255,255,255,.78); --glass-tint:rgba(232,236,214,.55);
+  --glass-brd:rgba(255,255,255,.75); --glass-edge:rgba(77,90,44,.10);
+  --glass-hi:inset 0 1px 0 rgba(255,255,255,.9), inset 0 -1px 0 rgba(255,255,255,.25);
+  --glass-sh:0 1px 1px rgba(40,46,20,.04), 0 8px 24px -10px rgba(40,46,20,.18);
+  --blur:blur(22px) saturate(180%);
+  --mesh:radial-gradient(60% 45% at 8% 4%, rgba(164,181,106,.55), transparent 70%),
+         radial-gradient(55% 40% at 100% 18%, rgba(221,185,74,.38), transparent 70%),
+         radial-gradient(70% 50% at 85% 95%, rgba(118,134,63,.40), transparent 70%),
+         radial-gradient(60% 45% at 0% 80%, rgba(201,162,39,.22), transparent 70%),
+         linear-gradient(180deg,#f3f1e6,#eef0e2);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --glass:rgba(38,42,30,.55); --glass-nav:rgba(34,38,27,.72); --glass-2:rgba(46,51,36,.78); --glass-tint:rgba(164,181,106,.14);
+    --glass-brd:rgba(255,255,255,.10); --glass-edge:rgba(0,0,0,.35);
+    --glass-hi:inset 0 1px 0 rgba(255,255,255,.12), inset 0 -1px 0 rgba(255,255,255,.03);
+    --glass-sh:0 10px 30px -12px rgba(0,0,0,.6);
+    --mesh:radial-gradient(60% 45% at 8% 4%, rgba(118,134,63,.40), transparent 70%),
+           radial-gradient(55% 40% at 100% 18%, rgba(160,128,30,.22), transparent 70%),
+           radial-gradient(70% 50% at 85% 95%, rgba(77,90,44,.45), transparent 70%),
+           linear-gradient(180deg,#14160f,#10120c);
+  }
+}
+html{background:var(--bg)}
+body{background:transparent}
+body::before{content:"";position:fixed;inset:-10vh -10vw;z-index:-1;background:var(--mesh);pointer-events:none}
+/* superfici di vetro: intestazione, barra in basso, sottomenu, fogli */
+header{background:var(--glass);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border-bottom:1px solid var(--glass-brd);box-shadow:0 1px 0 var(--glass-edge)}
+.sottomenu{background:transparent;padding-top:10px}
+.seg{background:var(--glass);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border:1px solid var(--glass-brd);border-radius:99px;padding:4px;box-shadow:var(--glass-hi),var(--glass-sh)}
+.seg button{border-radius:99px;transition:background-color .25s,color .25s,box-shadow .25s}
+.seg button.on{background:var(--glass-2);color:var(--ink);box-shadow:var(--glass-hi),0 2px 8px -2px rgba(40,46,20,.25)}
+nav.tabs{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));padding:6px;border-radius:30px;background:var(--glass-nav);-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);
+  border:1px solid var(--glass-brd);box-shadow:var(--glass-hi),0 12px 34px -10px rgba(30,36,15,.35);max-width:520px;margin:0 auto}
+nav.tabs button{border-radius:22px;padding:7px 2px 6px;transition:background-color .25s,color .25s}
+nav.tabs button.on{background:var(--glass-tint);box-shadow:var(--glass-hi)}
+nav.tabs .tab-add{flex:0 0 64px}
+nav.tabs .tab-add span{margin-top:0;width:50px;height:50px;line-height:48px;border-radius:50%;border:1px solid rgba(255,255,255,.45);
+  background:radial-gradient(120% 90% at 30% 15%, #93a454 0%, var(--olive) 55%, #3a4520 100%);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.55), inset 0 -3px 8px rgba(0,0,0,.25), 0 8px 18px -6px rgba(58,69,32,.7)}
+@media (prefers-color-scheme: dark){nav.tabs .tab-add span{color:#161812;background:radial-gradient(120% 90% at 30% 15%, #cfdc98 0%, var(--olive) 55%, #6c7a3a 100%)}}
+main{padding-bottom:calc(104px + env(safe-area-inset-bottom))}
+/* carte e riquadri: vetro leggero (senza sfocatura, lo sfondo è fermo) */
+.card,.kpi,.vt-sez,.vt-disp,.annuncio{background:var(--glass);border:1px solid var(--glass-brd);box-shadow:var(--glass-hi),var(--glass-sh)}
+.kpi{border-radius:18px}
+.card.warn{background:linear-gradient(135deg,rgba(246,236,203,.85),rgba(246,236,203,.55));border-color:rgba(255,255,255,.7)}
+@media (prefers-color-scheme: dark){.card.warn{background:linear-gradient(135deg,rgba(58,52,32,.85),rgba(58,52,32,.5))}}
+.row{border-top-color:rgba(120,125,95,.16)}
+/* pulsanti */
+.btn{border-radius:14px;background:linear-gradient(180deg,#5f6d36,var(--olive));box-shadow:inset 0 1px 0 rgba(255,255,255,.35), 0 4px 12px -4px rgba(58,69,32,.55)}
+@media (prefers-color-scheme: dark){.btn{background:linear-gradient(180deg,#b9c97e,var(--olive))}}
+.btn.sec{background:var(--glass-tint);border:1px solid var(--glass-brd);box-shadow:var(--glass-hi);color:var(--olive)}
+.btn.danger{background:rgba(246,225,219,.7);border:1px solid var(--glass-brd);box-shadow:var(--glass-hi)}
+.btn.sm{border-radius:99px;padding:7px 13px}
+.iconbtn,select.year{background:var(--glass-2);border:1px solid var(--glass-brd);box-shadow:var(--glass-hi),0 2px 6px -2px rgba(40,46,20,.2)}
+.iconbtn{border-radius:50%}
+select.year{border-radius:99px}
+.chip{background:var(--glass);border:1px solid var(--glass-brd);box-shadow:var(--glass-hi)}
+.chip.on{background:linear-gradient(180deg,#5f6d36,var(--olive));border-color:transparent}
+.search,label.f input,label.f select,label.f textarea{background:var(--glass-2);border:1px solid var(--glass-brd);box-shadow:inset 0 1px 2px rgba(40,46,20,.08)}
+label.f input:focus,label.f select:focus,label.f textarea:focus,.search:focus{outline:none;border-color:var(--olive-2);box-shadow:0 0 0 4px rgba(118,134,63,.18)}
+/* fogli e finestre */
+#sheet{background:rgba(30,34,20,.28);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+#sheet .panel,.nv{background:var(--glass-2);-webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%);
+  border:1px solid var(--glass-brd);border-bottom:0;box-shadow:var(--glass-hi),0 -12px 40px -10px rgba(20,24,10,.35);border-radius:28px 28px 0 0}
+#sheet .grab{background:rgba(120,125,95,.35)}
+#toast{background:rgba(38,41,28,.72);color:#fff;-webkit-backdrop-filter:var(--blur);backdrop-filter:var(--blur);border:1px solid rgba(255,255,255,.15);border-radius:99px;box-shadow:0 10px 30px -10px rgba(0,0,0,.45)}
+.splash,#guida{background:var(--mesh),var(--bg)}
+/* area clienti */
+.chip-punti{background:var(--glass-2);border:1px solid var(--glass-brd);box-shadow:var(--glass-hi)}
+.punti-card{border:1px solid rgba(255,255,255,.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 16px 36px -14px rgba(0,0,0,.45)}
+.vt-hero,.vt-mini{box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 12px 30px -14px rgba(0,0,0,.4)}
+/* chi preferisce meno trasparenze */
+@media (prefers-reduced-transparency: reduce){
+  header,.seg,nav.tabs,#sheet .panel,.nv,#toast{-webkit-backdrop-filter:none;backdrop-filter:none;background:var(--card)}
+  .card,.kpi{background:var(--card)}
+}
 </style>
 </head>
 <body>
@@ -2251,7 +2332,8 @@ registraSW();
    Ogni voce: ic (icona), t (titolo), d (descrizione), facoltativi perm ('soldi' | 'struttura' | 'team')
    per mostrarla solo a chi può usarla, cta (testo del pulsante) e vai (funzione che porta alla novità). */
 const NOVITA = [
-  { n:10, data:'2026-11-02', titolo:'Menu più semplice', voci:[
+  { n:10, data:'2026-11-02', titolo:'Nuovo aspetto e menu più semplice', voci:[
+    { ic:'✨', t:'Effetto vetro', d:'Barre e schede trasparenti come il vetro, con colori più morbidi; la barra in basso ora fluttua sopra i contenuti. Se nelle impostazioni del telefono hai ridotto le trasparenze, l\'app usa colori pieni.' },
     { ic:'🧭', t:'Quattro sezioni invece di sei', d:'Annata (riepilogo e conti), Piante, Campagna (lavori, raccolta e frantoio) e Olio (ordini, vetrina e magazzino). Dentro ogni sezione passi da una pagina all\'altra con i pulsanti in alto.' },
     { ic:'➕', t:'Il + sempre al centro', d:'Da qualsiasi schermata tocchi + in basso e scegli cosa registrare: lavoro, raccolta, molitura, spesa, pianta o olio in magazzino.', cta:'Prova il +', vai:() => { closeSheet?.(); setTimeout(quickAdd, 300); } } ]},
   { n:9, data:'2026-11-02', titolo:'Magazzino dell\'olio', voci:[
