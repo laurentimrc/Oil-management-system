@@ -157,6 +157,7 @@ select.year{border:1px solid var(--line);background:var(--card);border-radius:10
 /* sheet */
 #sheet{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.4);display:none;align-items:flex-end;justify-content:center}
 #sheet.open{display:flex}
+#sheet.sopra{z-index:60}
 #sheet .panel{background:var(--bg);width:100%;max-width:640px;max-height:92vh;overflow:auto;border-radius:20px 20px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom))}
 #sheet .grab{width:40px;height:4px;border-radius:4px;background:var(--line);margin:0 auto 12px}
 #sheet h3{margin:0 0 12px;font-size:18px}
@@ -1264,11 +1265,12 @@ function viewConti(){
 /* Foglio che sale dal basso: si chiude con ✕, toccando fuori, trascinando verso il basso, con Esc o con il tasto/gesto Indietro */
 function openSheet(html){
   const sh = $('#sheet'), pn = $('#sheet .panel');
+  if (!openSheet._legale) sh.classList.remove('sopra');
   $('#sheetBody').innerHTML = html; pn.style.transform = ''; sh.classList.add('open'); pn.scrollTop = 0;
   if (!S._sheetStoria) { S._sheetStoria = true; try { history.pushState({ foglio:1 }, ''); } catch(e){} }
 }
 function closeSheet(){
-  $('#sheet').classList.remove('open');
+  $('#sheet').classList.remove('open', 'sopra');
   // se subito dopo si apre un altro foglio, la voce nella cronologia resta valida
   setTimeout(() => { if (!$('#sheet').classList.contains('open') && S._sheetStoria) { S._sheetStoria = false; S._ignoraPop = true; history.back(); } }, 0);
 }
@@ -1744,8 +1746,10 @@ function testoLegale(tipo, n){
 let LEG_NEG = null;   // dati del negozio per i testi rivolti ai clienti (vetrina pubblica o negozio del gestore)
 function mostraLegale(tipo, n){
   const t = testoLegale(tipo, n || LEG_NEG || (C.pub) || (S.user && !modoCliente() ? negozio() : null)); if (!t) return;
+  openSheet._legale = true; $('#sheet').classList.add('sopra');   // sopra alla finestra di accettazione e alle altre finestre
   openSheet(`<h3>${t[0]}</h3><div class="legale"><div class="muted">Versione ${LEGALE.versione} del ${LEGALE.data}</div>${t[1].map(([h, c]) => sezLeg(h, c)).join('')}</div>
     <div class="actions"><button class="btn block" onclick="closeSheet()">Chiudi</button></div>`);
+  openSheet._legale = false;
 }
 const linkLeg = (tipo, testo) => `<a href="#${tipo}" onclick="mostraLegale('${tipo}');return false">${testo}</a>`;
 function piedeLegale(negozioMode){
