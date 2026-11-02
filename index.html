@@ -419,6 +419,21 @@ a.btn{text-decoration:none;display:inline-block}
   color:var(--ink);font-size:15px;line-height:1;cursor:pointer;box-shadow:var(--glass-hi,none)}
 .sheet-x:active{transform:scale(.92)}
 #sheet h3{padding-right:40px}
+
+/* piante: stato, posizione, vuoti */
+.riga-pianta{gap:12px}
+.pallino{display:inline-block;width:12px;height:12px;border-radius:50%;flex:0 0 12px;box-shadow:0 0 0 2px rgba(255,255,255,.7),0 1px 3px rgba(0,0,0,.2)}
+.chev{color:var(--muted);font-size:20px;line-height:1;margin-left:2px}
+.legenda-stati{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 10px}
+.legenda-stati .chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:5px 10px}
+.legenda-stati .pallino{width:10px;height:10px;flex-basis:10px}
+.stato-pill{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:13.5px;text-transform:capitalize}
+.stato-pill i{width:10px;height:10px;border-radius:50%}
+.pos-pianta{border:1px solid var(--glass-brd,var(--line));background:var(--glass,var(--card));border-radius:14px;padding:12px 14px;margin:2px 0 12px}
+.pos-lab{font-size:12.5px;color:var(--muted);font-weight:600}
+.pos-stato{font-size:14px;margin-top:3px}
+.pos-pianta .btn{white-space:nowrap}
+.vuoto-inv{font-size:13.5px;color:var(--muted);line-height:1.5;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
 /* ===== Liquid glass ===== */
 :root{
   --r:20px;
@@ -776,7 +791,7 @@ function render(){
     <header>
       <h1>🫒 <span>${S.owner && S.owner !== S.user.id ? esc(accessoAttivo()?.azienda || 'Uliveto condiviso') : 'Uliveto'}</span>${S.ruolo && S.ruolo !== 'owner' ? `<small class="ruolo">${RUOLI[S.ruolo]}</small>` : ''}</h1>
       <span id="spiaRete">${spiaRete()}</span>
-      <select class="year" onchange="S.year=+this.value;render()">${ys.map(y=>`<option ${y===S.year?'selected':''}>${y}</option>`).join('')}</select>
+      ${['home','conti','lavori','raccolta'].includes(S.tab) ? `<select class="year" aria-label="Annata" onchange="S.year=+this.value;render()">${ys.map(y=>`<option ${y===S.year?'selected':''}>${y}</option>`).join('')}</select>` : ''}
       <button class="iconbtn" onclick="openSettings()" aria-label="Impostazioni">⚙︎</button>
     </header>
     ${sottoMenu()}
@@ -875,16 +890,18 @@ function viewPiante(){
   if (S.vista==='terreni') return viewAppezzamenti();
   const kgY = {}; S.raccolte.filter(r=>inYear(r.data)&&r.pianta_id).forEach(r=>kgY[r.pianta_id]=(kgY[r.pianta_id]||0)+Number(r.kg_olive));
   const q = S.q.toLowerCase();
-  const list = S.piante.filter(p=>(S.filtroApp==='tutti'||p.appezzamento_id===S.filtroApp) &&
+  const list = S.piante.filter(p=>(S.filtroApp==='tutti'||p.appezzamento_id===S.filtroApp) && (!S.filtroStato || p.stato===S.filtroStato) &&
     (!q || [p.codice,p.varieta,p.note].some(x=>(x||'').toLowerCase().includes(q))));
   $('#view').innerHTML = `${toggleVista()}
     <input class="search" placeholder="Cerca per codice, varietà, note…" value="${esc(S.q)}" oninput="S.q=this.value;viewPiante();const s=document.querySelector('.search');s.focus();s.setSelectionRange(s.value.length,s.value.length)">
     ${S.appezzamenti.length?`<div class="chips"><button class="chip ${S.filtroApp==='tutti'?'on':''}" onclick="S.filtroApp='tutti';viewPiante()">Tutti</button>
       ${S.appezzamenti.map(a=>`<button class="chip ${S.filtroApp===a.id?'on':''}" onclick="S.filtroApp='${a.id}';viewPiante()">${esc(a.nome)}</button>`).join('')}</div>`:''}
-    <div class="card"><h2>${list.length} piante<span class="sp"></span><button class="btn sm sec" onclick="formEtichette()">🏷️ QR</button>${puo('struttura')?'<button class="btn sm sec" onclick="formBlocco()">+ In blocco</button>':''}</h2>
-      ${list.map(p=>`<div class="row tap" onclick="detPianta('${p.id}')"><div class="main"><div class="t">${esc(p.codice)} ${p.stato!=='sana'?`<span class="badge ${STATO_CL[p.stato]}">${esc(p.stato)}</span>`:''}</div>
+    ${(() => { const c = {}; S.piante.forEach(x => c[x.stato] = (c[x.stato]||0) + 1); const k = Object.keys(c);
+      return k.length > 1 ? `<div class="legenda-stati">${STATI.filter(x => c[x]).map(x => `<button class="chip ${S.filtroStato===x?'on':''}" onclick="S.filtroStato=S.filtroStato==='${x}'?null:'${x}';viewPiante()"><span class="pallino" style="background:${COL_STATO[x]}"></span>${esc(x)} ${c[x]}</button>`).join('')}</div>` : ''; })()}
+    <div class="card"><h2>${list.length} ${list.length === 1 ? 'pianta' : 'piante'}<span class="sp"></span><button class="btn sm sec" onclick="formEtichette()">🏷️ QR</button>${puo('struttura')?'<button class="btn sm sec" onclick="formBlocco()">+ In blocco</button>':''}</h2>
+      ${list.map(p=>`<div class="row tap riga-pianta" onclick="detPianta('${p.id}')"><span class="pallino" style="background:${COL_STATO[p.stato]||COL_STATO.sana}" title="${esc(p.stato)}"></span><div class="main"><div class="t">${esc(p.codice)} ${p.stato!=='sana'?`<span class="badge ${STATO_CL[p.stato]}">${esc(p.stato)}</span>`:''}</div>
         <div class="s">${[p.varieta,appName(p.appezzamento_id),p.anno_impianto?'impianto '+p.anno_impianto:null].filter(Boolean).map(esc).join(' · ')||'—'}</div></div>
-        <div class="n">${kgY[p.id]?num(kgY[p.id])+' kg':''}</div></div>`).join('') || (S.piante.length ? '<div class="empty">Nessuna pianta trovata.</div>'
+        <div class="n">${kgY[p.id]?num(kgY[p.id])+' kg':''}</div><div class="chev">›</div></div>`).join('') || (S.piante.length ? '<div class="empty">Nessuna pianta trovata.</div>'
           : `<div class="empty">Nessuna pianta ancora.${puo('struttura') ? `<div class="actions" style="justify-content:center">${S.appezzamenti.length ? '' : '<button class="btn sec" onclick="formAppezzamento()">📍 Prima l\'appezzamento</button>'}<button class="btn" onclick="formBlocco()">🌳 Aggiungi piante</button></div>` : ''}</div>`)}</div>`;
 }
 
@@ -991,6 +1008,7 @@ async function assegnaPos(id, lat, lng, acc){
   const v = { lat:+lat.toFixed(7), lng:+lng.toFixed(7) };
   try { await save('piante', v, id); } catch(e) { return fail(e); }
   Object.assign(p, v);
+  if (S.posUna === id) { S.posUna = null; S.posiziona = false; toast(`${p.codice} posizionata ✓`); viewMappa(); return; }
   const next = S.piante.find(x=>x.lat==null||x.lng==null);
   S.posSel = next?.id || id;
   if (!next) S.posiziona = false;
@@ -1006,7 +1024,8 @@ function detPianta(id){
   const storia = interventiPianta(p).slice(0,15);
   openSheet(`<h3>🌳 Pianta ${esc(p.codice)}</h3>
     <div class="card">
-      <div class="row"><div class="main">Stato</div><span class="badge ${STATO_CL[p.stato]}">${esc(p.stato)}</span></div>
+      <div class="row"><div class="main">Stato</div><span class="stato-pill"><i style="background:${COL_STATO[p.stato]||COL_STATO.sana}"></i>${esc(p.stato)}</span></div>
+      ${p.lat==null && puo('struttura') ? `<div class="row tap" onclick="posizionaSuMappa('${id}')"><div class="main">Posizione<div class="s">Non ancora sulla mappa</div></div><span class="btn sm sec">🗺️ Posiziona</span></div>` : ''}
       ${p.varieta?`<div class="row"><div class="main">Varietà</div><div class="n">${esc(p.varieta)}</div></div>`:''}
       ${p.appezzamento_id?(()=>{const a=S.appezzamenti.find(x=>x.id===p.appezzamento_id);const ind=indirizzoLotto(a),cat=catastoLotto(a),nav=navigaLotto(a||{});
         return `<div class="row"><div class="main">Appezzamento${ind||cat?`<div class="s" style="white-space:normal">${esc([ind,cat].filter(Boolean).join(' · '))}</div>`:''}</div><div class="n">${esc(appName(p.appezzamento_id))}${nav?` <a href="${nav}" target="_blank" rel="noopener">↗</a>`:''}</div></div>`})():''}
@@ -1015,9 +1034,11 @@ function detPianta(id){
       ${p.note?`<div class="row"><div class="main s" style="white-space:normal">${esc(p.note)}</div></div>`:''}
     </div>
     <div class="card" id="meteoPianta"><h2>🌤️ Meteo qui</h2><div class="muted">Carico…</div></div>
-    <div class="card"><h2>Produzione (kg olive)</h2>
-      <div class="bars">${prod.map(x=>`<div class="b ${x.y===S.year?'cur':''}"><em>${x.kg?num(x.kg):''}</em><i style="height:${x.kg/mx*80}%"></i><small>${x.y}</small></div>`).join('')}</div></div>
-    <div class="card"><h2>Storico lavori</h2>${storia.map(rowIntervento).join('')||'<div class="empty">Nessun lavoro.</div>'}</div>
+    <div class="card"><h2>🧺 Produzione (kg olive)</h2>
+      ${prod.some(x=>x.kg) ? `<div class="bars">${prod.map(x=>`<div class="b ${x.y===S.year?'cur':''}"><em>${x.kg?num(x.kg):''}</em><i style="height:${x.kg/mx*80}%"></i><small>${x.y}</small></div>`).join('')}</div>`
+        : `<div class="vuoto-inv">Nessuna raccolta registrata per questa pianta. Pesa le sue olive quando raccogli: così vedi com'è andata anno per anno e quali piante rendono di più.
+          <button class="btn sm sec" onclick="formRaccolta(null,'${id}')">🧺 Registra la raccolta</button></div>`}</div>
+    <div class="card"><h2>🛠️ Storico lavori</h2>${storia.map(rowIntervento).join('')||'<div class="muted">Nessun lavoro su questa pianta. Quelli registrati per tutto l\'uliveto o per il suo appezzamento compaiono qui.</div>'}</div>
     <div class="actions">
       <button class="btn sec" onclick="formRaccolta(null,'${id}')">+ Raccolta</button>
       <button class="btn sec" onclick="formIntervento(null,['${id}'])">+ Lavoro</button>
@@ -1461,17 +1482,29 @@ function formPianta(id){
     {name:'stato',label:'Stato',type:'select',options:STATI,value:p.stato||'sana',empty:false,half:true},
     {name:'varieta',label:'Varietà',value:p.varieta,ph:'es. Frantoio, Leccino, Coratina',half:true},
     {name:'anno_impianto',label:'Anno impianto',type:'number',value:p.anno_impianto,half:true},
-    {name:'appezzamento_id',label:'Appezzamento',type:'select',options:appOpts(),value:p.appezzamento_id},
-    {name:'lat',label:'Latitudine',type:'number',value:p.lat,half:true},
-    {name:'lng',label:'Longitudine',type:'number',value:p.lng,half:true},
-    {name:'note',label:'Note',type:'textarea',value:p.note}],
-    extra:`<button type="button" class="btn sm sec" style="margin:-4px 0 10px" onclick="gps()">📍 Usa la mia posizione</button>`,
+    {name:'appezzamento_id',label:'Appezzamento',type:'select',options:appOpts(),value:p.appezzamento_id ?? (S.appezzamenti.length===1 ? S.appezzamenti[0].id : null)},
+    {name:'lat',type:'hidden',value:p.lat,num:true},
+    {name:'lng',type:'hidden',value:p.lng,num:true},
+    {name:'note',label:'Note',type:'textarea',value:p.note,sez:'note'}],
+    sezioni:{ note:{ t:'Note', open:!!p.note } },
+    extra:`<div class="pos-pianta"><div class="pos-lab">Posizione nell'uliveto</div>
+      <div class="pos-stato" id="posStato">${p.lat!=null ? '✅ Posizionata' : 'Non ancora posizionata: serve per la mappa e il meteo preciso'}</div>
+      <div class="actions" style="margin-top:8px;flex-wrap:wrap"><button type="button" class="btn sm sec" onclick="gps()">📍 Sono qui</button>
+        ${id ? `<button type="button" class="btn sm sec" onclick="posizionaSuMappa('${id}')">🗺️ Sulla mappa</button>` : ''}
+        ${p.lat!=null ? `<button type="button" class="btn sm sec" onclick="$('#frm').lat.value='';$('#frm').lng.value='';$('#posStato').textContent='Posizione tolta: salva per confermare'">Togli</button>` : ''}</div>
+      <div class="muted" style="margin-top:6px">${id ? '«Sono qui» usa il GPS del telefono: mettiti accanto al tronco.' : 'Con «Sono qui» usi il GPS del telefono, accanto al tronco. Oppure salvala ora e posizionala dopo dalla mappa.'}</div></div>`,
     onSubmit: v=>save('piante',v,id), onDelete: id&&puo('struttura')&&(()=>remove('piante',id)) });
 }
 function gps(){
   if(!navigator.geolocation) return toast('Geolocalizzazione non disponibile');
-  navigator.geolocation.getCurrentPosition(pos=>{ $('[name=lat]').value=pos.coords.latitude.toFixed(6); $('[name=lng]').value=pos.coords.longitude.toFixed(6); toast('Posizione inserita'); },
-    ()=>toast('Posizione non disponibile'),{enableHighAccuracy:true,timeout:10000});
+  toast('Rilevo la posizione…');
+  navigator.geolocation.getCurrentPosition(pos=>{ $('[name=lat]').value=pos.coords.latitude.toFixed(7); $('[name=lng]').value=pos.coords.longitude.toFixed(7);
+      const el = $('#posStato'); if (el) el.textContent = `✅ Posizione rilevata (precisione ±${Math.round(pos.coords.accuracy)} m): salva per confermare`; toast('Posizione rilevata'); },
+    ()=>toast('Posizione non disponibile: controlla i permessi del browser'),{enableHighAccuracy:true,timeout:15000,maximumAge:0});
+}
+function posizionaSuMappa(id){
+  closeSheet(); S.tab = 'piante'; S.vista = 'mappa'; S.posSel = id; S.posiziona = true; S.posUna = id; render(); scrollTo(0, 0);
+  toast('Tocca sulla mappa il punto della pianta ' + (pianta(id)?.codice || ''));
 }
 
 function formBlocco(appId){
@@ -2523,6 +2556,10 @@ registraSW();
    Ogni voce: ic (icona), t (titolo), d (descrizione), facoltativi perm ('soldi' | 'struttura' | 'team')
    per mostrarla solo a chi può usarla, cta (testo del pulsante) e vai (funzione che porta alla novità). */
 const NOVITA = [
+  { n:12, data:'2026-11-02', titolo:'Piante più chiare', voci:[
+    { ic:'🟢', t:'Lo stato si vede a colpo d\'occhio', d:'Ogni pianta ha un pallino colorato (sana, sotto osservazione, malata, giovane, morta). Tocca un colore in cima all\'elenco per vedere solo quelle piante.', cta:'Vedi le piante', vai:() => { S.tab = 'piante'; S.vista = 'lista'; render(); } },
+    { ic:'📍', t:'Posizione senza coordinate', d:'Nella scheda della pianta usa «Sono qui» accanto al tronco oppure «Sulla mappa»: niente più latitudine e longitudine da scrivere.', perm:'struttura' },
+    { ic:'📅', t:'Anno solo dove serve', d:'Il selettore dell\'annata compare solo in Annata e Campagna, dove cambia i numeri.' } ]},
   { n:11, data:'2026-11-02', titolo:'Più comoda in campagna', voci:[
     { ic:'📵', t:'Salva anche senza campo', d:'Lavori, raccolte, piante e promemoria si salvano sul telefono anche senza rete. In alto vedi quanti sono in attesa: partono da soli appena torna il segnale.' },
     { ic:'☀️', t:'La pagina Oggi', d:'Appena apri l\'app vedi cosa c\'è da fare, le carenze in corso e il pulsante per registrare un lavoro. I numeri dell\'annata sono più sotto.', cta:'Vai a Oggi', vai:() => { S.tab = 'home'; render(); } },
