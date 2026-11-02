@@ -384,6 +384,31 @@ label.chk input{margin-top:3px;width:18px;height:18px}
 .auth .vt p{text-align:left;margin:0;color:inherit}.auth .vt .vt-hero p{margin-top:8px}.auth .vt .vt-annata p,.auth .vt .vt-prod p{margin-top:4px}.auth .vt .vt-prod p{color:var(--muted)}
 .link{background:none;border:0;color:var(--olive);font-weight:600;cursor:pointer;padding:8px;width:100%}
 
+
+/* oggi, moduli più corti, appezzamenti, rete */
+.oggi h2{margin-bottom:6px}
+.oggi-data{font-weight:500;font-size:12.5px;color:var(--muted);text-transform:capitalize}
+.oggi-az{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.oggi-az .btn{flex:1 1 auto;white-space:nowrap}
+.oggi-az .btn:first-child{flex-basis:100%}
+.avviso-carenza .t{color:var(--red)}
+.sez-tit{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 4px 8px;font-weight:700}
+.passi{margin:0 0 6px;padding-left:20px;font-size:14px;line-height:1.5}.passi li{margin:4px 0}
+.passi li.fatto{color:var(--muted);text-decoration:line-through}
+details.altro{border:1px solid var(--glass-brd,var(--line));border-radius:14px;background:var(--glass,var(--card));margin:2px 0 12px;box-shadow:var(--glass-hi,none)}
+details.altro summary{list-style:none;cursor:pointer;padding:12px 14px;font-weight:600;font-size:14px;color:var(--olive);display:flex;align-items:center;gap:6px}
+details.altro summary::-webkit-details-marker{display:none}
+details.altro summary::after{content:"›";margin-left:auto;font-size:20px;line-height:1;transition:transform .2s}
+details.altro[open] summary::after{transform:rotate(90deg)}
+.altro-in{padding:0 14px 4px}
+[data-gruppo][hidden]{display:none}
+.seg-piante button{font-size:13px;padding:8px 2px;white-space:nowrap}
+.lotto .s{font-size:13px;color:var(--muted)}
+.lotto .actions .btn,.passi+.actions .btn,.empty .actions .btn{white-space:nowrap;text-decoration:none}
+a.btn{text-decoration:none;display:inline-block}
+.spia{border:0;border-radius:99px;padding:6px 10px;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;background:var(--red-soft);color:var(--red)}
+.spia.attesa{background:var(--gold-soft);color:#7a5d00}
+@media (prefers-color-scheme: dark){.spia.attesa{color:var(--gold)}}
 /* ===== Liquid glass ===== */
 :root{
   --r:20px;
@@ -544,6 +569,7 @@ const S = { user:null, tab:'home', year:new Date().getFullYear(), filtroTipo:'tu
 
 /* ===== Utility ===== */
 const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num = (n, d=1) => Number(n||0).toLocaleString('it-IT',{maximumFractionDigits:d});
 const eur = n => Number(n||0).toLocaleString('it-IT',{style:'currency',currency:'EUR'});
@@ -587,16 +613,109 @@ function svuotaCache(){ try { Object.keys(localStorage).filter(k=>k.startsWith('
 const TAB_PROPRIE = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti','promemoria','magazzino_olio'];
 async function save(table, values, id){
   if (!id && TAB_PROPRIE.includes(table) && values.user_id == null) values = { ...values, user_id: S.owner || S.user.id };
-  const q = id ? sb.from(table).update(values).eq('id',id) : sb.from(table).insert(values);
-  const { data, error } = await q.select().single();
-  if (error) throw error; return data;
+  if (!(table in TAB_OFFLINE)) {
+    const q = id ? sb.from(table).update(values).eq('id',id) : sb.from(table).insert(values);
+    const { data, error } = await q.select().single();
+    if (error) throw error; return data;
+  }
+  if (!id) values = { id: nuovoId(), ...values };
+  await scrivi(id ? { k:'upd', t:table, id, v:values } : { k:'ins', t:table, v:values });
+  const loc = (S[TAB_OFFLINE[table]] || []).find(x => x.id === (id || values.id));
+  return { ...(loc || {}), ...values, id: id || values.id };
 }
 async function remove(table, id){
   if (!confirm('Eliminare definitivamente questo elemento?')) return false;
+  if (table in TAB_OFFLINE) { await scrivi({ k:'del', t:table, id }); return true; }
   const { error } = await sb.from(table).delete().eq('id', id);
   if (error) throw error; return true;
 }
-async function refresh(){ try{ await loadAll(); S._caricato = true; render(); apriDaLink(); }catch(e){ fail(e); } }
+async function refresh(){
+  if (leggiCoda().length) await inviaCoda();
+  try {
+    await loadAll();
+    const coda = leggiCoda(); if (coda.length) { coda.forEach(applicaLocale); scriviCache(); }
+    S._caricato = true; S._offline = false; render(); apriDaLink();
+  } catch(e) {
+    if (erroreDiRete(e) && S._caricato) { S._offline = true; render(); apriDaLink(); }
+    else fail(e);
+  }
+}
+
+/* ===== Salvataggi senza rete =====
+   Lavori, raccolte, piante, promemoria e conti si salvano anche senza campo: restano in coda sul telefono
+   e partono da soli appena torna la rete. Ogni riga nuova ha già il suo id, quindi un invio ripetuto non crea doppioni. */
+const TAB_OFFLINE = { appezzamenti:'appezzamenti', piante:'piante', interventi:'interventi', intervento_piante:null, raccolte:'raccolte',
+  moliture:'moliture', movimenti:'movimenti', promemoria:'promemoria', magazzino_olio:'magazzino' };
+const codaKey = () => 'uliveto:coda:' + S.user?.id + ':' + (S.owner || S.user?.id);
+function leggiCoda(){ try { return JSON.parse(localStorage.getItem(codaKey()) || '[]'); } catch(e){ return []; } }
+function scriviCoda(c){ try { localStorage.setItem(codaKey(), JSON.stringify(c)); } catch(e){} aggiornaSpia(); }
+const nuovoId = () => crypto.randomUUID ? crypto.randomUUID()
+  : '10000000-1000-4000-8000-100000000000'.replace(/[018]/g, c => (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16));
+const erroreDiRete = e => !navigator.onLine || e?._rete || /failed to fetch|fetch failed|network|load failed|abort|timeout|internet/i.test((e?.message || '') + ' ' + (e?.name || ''));
+async function eseguiOp(op){
+  let q = op.k === 'ins' ? sb.from(op.t).upsert(op.v, { ignoreDuplicates:true })
+    : op.k === 'upd' ? sb.from(op.t).update(op.v).eq('id', op.id)
+    : op.k === 'del' ? sb.from(op.t).delete().eq('id', op.id)
+    : sb.from(op.t).delete().eq(op.col, op.val);
+  if (q.abortSignal && window.AbortSignal?.timeout) q = q.abortSignal(AbortSignal.timeout(10000));
+  let r; try { r = await q; } catch(e) { e._rete = true; throw e; }
+  if (r.error) { if (r.status === 0 || erroreDiRete(r.error)) r.error._rete = true; throw r.error; }
+}
+async function scrivi(op){
+  const coda = leggiCoda();
+  if (!coda.length && navigator.onLine) {
+    try { await eseguiOp(op); return 'ok'; } catch(e) { if (!e._rete) throw e; }
+  }
+  coda.push(op); scriviCoda(coda); applicaLocale(op); scriviCache(); S._inCoda = true;
+  return 'coda';
+}
+function applicaLocale(op){
+  if (op.t === 'intervento_piante') {
+    if (op.k === 'delw') { const i = S.interventi.find(x => x.id === op.val); if (i) i.intervento_piante = []; }
+    if (op.k === 'ins') [].concat(op.v).forEach(r => { const i = S.interventi.find(x => x.id === r.intervento_id); if (i && !(i.intervento_piante ||= []).some(x => x.pianta_id === r.pianta_id)) i.intervento_piante.push({ pianta_id:r.pianta_id }); });
+    return;
+  }
+  const key = TAB_OFFLINE[op.t]; if (!key) return; const arr = S[key] ||= [];
+  if (op.k === 'ins') [].concat(op.v).forEach(r => { const j = arr.findIndex(x => x.id === r.id);
+    if (j >= 0) Object.assign(arr[j], r, { _attesa:true });
+    else arr.unshift({ created_at:new Date().toISOString(), ...(op.t === 'interventi' ? { intervento_piante:[] } : {}), ...(op.t === 'promemoria' ? { fatto:false } : {}), ...r, _attesa:true }); });
+  if (op.k === 'upd') { const r = arr.find(x => x.id === op.id); if (r) Object.assign(r, op.v, { _attesa:true }); }
+  if (op.k === 'del') { const j = arr.findIndex(x => x.id === op.id); if (j >= 0) arr.splice(j, 1); }
+  if (op.t === 'promemoria') S.promemoria = S.promemoria.filter(x => !x.fatto).sort((a, b) => a.data.localeCompare(b.data));
+  if (op.t === 'piante') S.piante.sort((a, b) => a.codice.localeCompare(b.codice, 'it', { numeric:true }));
+  if (op.t === 'appezzamenti') S.appezzamenti.sort((a, b) => a.nome.localeCompare(b.nome));
+}
+async function inviaCoda(){
+  if (inviaCoda._in) return inviaCoda._in;
+  return inviaCoda._in = (async () => {
+    let coda = leggiCoda(), inviati = 0;
+    while (coda.length && navigator.onLine) {
+      try { await eseguiOp(coda[0]); inviati++; }
+      catch(e) { if (e._rete) break; console.error(e); toast('Un salvataggio fatto senza rete non è stato accettato: ' + (e.message || e)); }
+      coda = leggiCoda(); coda.shift(); scriviCoda(coda);
+    }
+    if (inviati && !coda.length) toast(`📶 Inviati ${inviati === 1 ? 'il salvataggio fatto' : inviati + ' salvataggi fatti'} senza rete ✓`);
+    return inviati;
+  })().finally(() => { inviaCoda._in = null; });
+}
+async function sincronizza(daUtente){
+  if (!S.user || modoCliente()) return;
+  if (!navigator.onLine) { aggiornaSpia(); if (daUtente) toast('Ancora senza rete: riprovo da solo appena torna il campo'); return; }
+  if (!leggiCoda().length && !S._offline) return;
+  const n = await inviaCoda();
+  if (n || S._offline) await refresh();
+  else if (daUtente && leggiCoda().length) toast('Rete ancora debole: riprovo tra poco');
+}
+function spiaRete(){
+  const n = S.user ? leggiCoda().length : 0;
+  if (!n && !S._offline && navigator.onLine) return '';
+  return `<button class="spia ${n ? 'attesa' : ''}" onclick="sincronizza(true)" title="Salvataggi in attesa di rete">${n ? `⏳ ${n} da inviare` : '📵 Senza rete'}</button>`;
+}
+function aggiornaSpia(){ const h = $('#spiaRete'); if (h) h.innerHTML = spiaRete(); }
+window.addEventListener('online', () => { aggiornaSpia(); setTimeout(() => sincronizza(), 1500); });
+window.addEventListener('offline', () => { S._offline = true; aggiornaSpia(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && S.user && leggiCoda().length) sincronizza(); });
+setInterval(() => { if (S.user && leggiCoda().length) sincronizza(); }, 30000);
 
 /* ===== Calcoli annata ===== */
 function annata(y){
@@ -646,6 +765,7 @@ function render(){
   $('#app').innerHTML = `
     <header>
       <h1>🫒 <span>${S.owner && S.owner !== S.user.id ? esc(accessoAttivo()?.azienda || 'Uliveto condiviso') : 'Uliveto'}</span>${S.ruolo && S.ruolo !== 'owner' ? `<small class="ruolo">${RUOLI[S.ruolo]}</small>` : ''}</h1>
+      <span id="spiaRete">${spiaRete()}</span>
       <select class="year" onchange="S.year=+this.value;render()">${ys.map(y=>`<option ${y===S.year?'selected':''}>${y}</option>`).join('')}</select>
       <button class="iconbtn" onclick="openSettings()" aria-label="Impostazioni">⚙︎</button>
     </header>
@@ -690,15 +810,30 @@ function viewHome(){
   const perAnno = ys.map(y=>({y, kg: sum(S.raccolte.filter(r=>inYear(r.data,y)),r=>r.kg_olive)}));
   const maxKg = Math.max(1,...perAnno.map(x=>x.kg));
   const vuoto = !S.piante.length;
+  const prom = (S.promemoria || []).filter(x => !x.fatto && giorniDa(x.data) <= 7);
+  const ritardo = prom.filter(x => giorniDa(x.data) < 0).length;
+  const quando = new Date().toLocaleDateString('it-IT', { weekday:'long', day:'numeric', month:'long' });
 
   $('#view').innerHTML = `
     ${vuoto && puo('struttura') ? `<div class="card"><h2>👋 Iniziamo</h2>
-      <p style="margin:0 0 12px">Crea gli appezzamenti del tuo uliveto e poi aggiungi le piante (anche in blocco, es. da A-1 ad A-80).</p>
-      <div class="actions" style="margin-top:0"><button class="btn sec" onclick="formAppezzamento()">+ Appezzamento</button><button class="btn" onclick="formBlocco()">+ Piante in blocco</button></div></div>`:''}
-    ${carenze.length ? `<div class="card warn"><h2>⚠️ Tempi di carenza in corso</h2>
+      <ol class="passi">
+        <li class="${S.appezzamenti.length ? 'fatto' : ''}"><b>Crea l'appezzamento</b> con l'indirizzo del terreno: serve per meteo e mappa.</li>
+        <li><b>Aggiungi le piante</b>, anche tutte insieme (es. da A-1 ad A-80).</li>
+        <li><b>Registra i lavori</b> con il pulsante + in basso.</li></ol>
+      <div class="actions" style="margin-top:4px">${S.appezzamenti.length ? '' : '<button class="btn sec" onclick="formAppezzamento()">📍 Appezzamento</button>'}<button class="btn" onclick="formBlocco()">🌳 Aggiungi piante</button></div></div>`:''}
+    <div class="card oggi"><h2>☀️ Oggi<span class="sp"></span><span class="oggi-data">${quando}</span></h2>
       ${carenze.map(i=>{const fine=addDays(i.data,i.giorni_carenza), gg=Math.round((new Date(fine+'T00:00')-new Date(oggi+'T00:00'))/864e5);
-        return `<div class="row"><div class="main"><div class="t" style="white-space:normal">${esc(i.prodotto||'Trattamento')}</div><div class="s" style="white-space:normal">${esc(targetLabel(i))} · trattato il ${fdate(i.data)}</div>
-        <div class="carenza">🚫 Non raccogliere fino al <b>${fdate(fine)}</b>${gg>0?` (${gg} gg)`:' (ultimo giorno)'}</div></div></div>`}).join('')}</div>`:''}
+        return `<div class="row avviso-carenza"><div style="font-size:22px">🚫</div><div class="main"><div class="t" style="white-space:normal">Non raccogliere fino al ${fdate(fine)}${gg>0?` (${gg} gg)`:' (ultimo giorno)'}</div>
+        <div class="s" style="white-space:normal">${esc(i.prodotto||'Trattamento')} · ${esc(targetLabel(i))} · trattato il ${fdate(i.data)}</div></div></div>`}).join('')}
+      ${prom.slice(0, 4).map(rowPromemoria).join('')}
+      ${!prom.length && !carenze.length ? '<div class="muted" style="margin:-2px 0 4px">Niente in programma questa settimana.</div>' : ''}
+      ${prom.length > 4 ? `<button class="btn sm sec" style="margin-top:6px" onclick="vaiPagina('lavori')">Altri ${prom.length - 4} da fare ›</button>` : ''}
+      ${ritardo ? `<div class="s" style="color:var(--red);margin-top:4px;font-size:12.5px">${ritardo} ${ritardo === 1 ? 'lavoro in ritardo' : 'lavori in ritardo'}</div>` : ''}
+      <div class="oggi-az"><button class="btn" onclick="formIntervento()">🛠️ Registra un lavoro</button>
+        <button class="btn sec" onclick="formRaccolta()">🧺 Raccolta</button>
+        <button class="btn sec" onclick="formPromemoria()">📌 Da fare</button></div></div>
+    <div class="card" id="meteoCard"><h2>🌤️ Meteo</h2><div class="empty">Carico le previsioni…</div></div>
+    <h3 class="sez-tit">La tua annata ${S.year}</h3>
     <div class="kpis">
       <div class="kpi"><div class="l">Olive raccolte</div><div class="v">${num(a.kgRacc,0)} kg</div>${delta(a.kgRacc,p.kgRacc,' kg')}</div>
       <div class="kpi"><div class="l">Olio prodotto</div><div class="v">${num(a.lt,0)} L</div>${delta(a.lt,p.lt,' L')}</div>
@@ -706,18 +841,15 @@ function viewHome(){
       ${puo('soldi') ? `<div class="kpi"><div class="l">Costo per litro</div><div class="v">${a.lt?eur(a.spese/a.lt):'—'}</div><div class="d">spese ${eur(a.spese)}</div></div>`
         : `<div class="kpi"><div class="l">Lavori registrati</div><div class="v">${a.int.length}</div><div class="d">${num(a.ore)} ore</div></div>`}
     </div>
-    ${cardDaFare(7, 3)}
-    <div class="card" id="meteoCard"><h2>🌤️ Meteo</h2><div class="empty">Carico le previsioni…</div></div>
     <div class="card"><h2>📅 ${MESI_L[m]}: cosa fare di solito</h2>
       <ul class="season">${STAGIONE[m].map(s=>`<li>${esc(s)}</li>`).join('')}</ul>
       <div class="muted" style="margin-top:6px">Indicazioni generali: adatta a zona, varietà e andamento stagionale.</div></div>
-    <div class="card"><h2>📊 Olive raccolte per anno</h2>
-      <div class="bars">${perAnno.map(x=>`<div class="b ${x.y===S.year?'cur':''}"><em>${x.kg?num(x.kg,0):''}</em><i style="height:${x.kg/maxKg*80}%"></i><small>${x.y}</small></div>`).join('')}</div></div>
-    <div class="card"><h2>🏆 Piante più produttive ${S.year}</h2>
-      ${top.length ? top.map(([id,kg])=>{const pp=pianta(id);return pp?`<div class="row tap" onclick="detPianta('${id}')"><div class="main"><div class="t">${esc(pp.codice)}</div><div class="s">${esc(pp.varieta||'')} ${pp.appezzamento_id?'· '+esc(appName(pp.appezzamento_id)):''}</div></div><div class="n">${num(kg)} kg</div></div>`:''}).join('')
-        : `<div class="empty">Registra le raccolte per pianta per vedere la classifica.</div>`}</div>
-    <div class="card"><h2>🛠️ Ultimi lavori<span class="sp"></span><button class="btn sm sec" onclick="S.tab='lavori';render()">Tutti</button></h2>
-      ${a.int.slice(0,5).map(rowIntervento).join('') || `<div class="empty">Nessun lavoro registrato nel ${S.year}.</div>`}</div>`;
+    ${perAnno.some(x=>x.kg) ? `<div class="card"><h2>📊 Olive raccolte per anno</h2>
+      <div class="bars">${perAnno.map(x=>`<div class="b ${x.y===S.year?'cur':''}"><em>${x.kg?num(x.kg,0):''}</em><i style="height:${x.kg/maxKg*80}%"></i><small>${x.y}</small></div>`).join('')}</div></div>` : ''}
+    ${top.length ? `<div class="card"><h2>🏆 Piante più produttive ${S.year}</h2>
+      ${top.map(([id,kg])=>{const pp=pianta(id);return pp?`<div class="row tap" onclick="detPianta('${id}')"><div class="main"><div class="t">${esc(pp.codice)}</div><div class="s">${esc(pp.varieta||'')} ${pp.appezzamento_id?'· '+esc(appName(pp.appezzamento_id)):''}</div></div><div class="n">${num(kg)} kg</div></div>`:''}).join('')}</div>` : ''}
+    ${a.int.length ? `<div class="card"><h2>🛠️ Ultimi lavori<span class="sp"></span><button class="btn sm sec" onclick="vaiPagina('lavori')">Tutti</button></h2>
+      ${a.int.slice(0,5).map(rowIntervento).join('')}</div>` : ''}`;
   meteoHome();
 }
 
@@ -730,6 +862,7 @@ function rowIntervento(i){
 
 function viewPiante(){
   if (S.vista==='mappa') return viewMappa();
+  if (S.vista==='terreni') return viewAppezzamenti();
   const kgY = {}; S.raccolte.filter(r=>inYear(r.data)&&r.pianta_id).forEach(r=>kgY[r.pianta_id]=(kgY[r.pianta_id]||0)+Number(r.kg_olive));
   const q = S.q.toLowerCase();
   const list = S.piante.filter(p=>(S.filtroApp==='tutti'||p.appezzamento_id===S.filtroApp) &&
@@ -741,14 +874,28 @@ function viewPiante(){
     <div class="card"><h2>${list.length} piante<span class="sp"></span><button class="btn sm sec" onclick="formEtichette()">🏷️ QR</button>${puo('struttura')?'<button class="btn sm sec" onclick="formBlocco()">+ In blocco</button>':''}</h2>
       ${list.map(p=>`<div class="row tap" onclick="detPianta('${p.id}')"><div class="main"><div class="t">${esc(p.codice)} ${p.stato!=='sana'?`<span class="badge ${STATO_CL[p.stato]}">${esc(p.stato)}</span>`:''}</div>
         <div class="s">${[p.varieta,appName(p.appezzamento_id),p.anno_impianto?'impianto '+p.anno_impianto:null].filter(Boolean).map(esc).join(' · ')||'—'}</div></div>
-        <div class="n">${kgY[p.id]?num(kgY[p.id])+' kg':''}</div></div>`).join('') || `<div class="empty">Nessuna pianta. Usa + per aggiungerne.</div>`}</div>`;
+        <div class="n">${kgY[p.id]?num(kgY[p.id])+' kg':''}</div></div>`).join('') || (S.piante.length ? '<div class="empty">Nessuna pianta trovata.</div>'
+          : `<div class="empty">Nessuna pianta ancora.${puo('struttura') ? `<div class="actions" style="justify-content:center">${S.appezzamenti.length ? '' : '<button class="btn sec" onclick="formAppezzamento()">📍 Prima l\'appezzamento</button>'}<button class="btn" onclick="formBlocco()">🌳 Aggiungi piante</button></div>` : ''}</div>`)}</div>`;
 }
 
 /* ===== Mappa ===== */
 const COL_STATO = {'sana':'#5f7f1f','sotto osservazione':'#e0a800','malata':'#c0392b','giovane':'#9ccc65','morta':'#8a8a8a'};
 const COL_PROD = ['#b5b5b5','#f3e79b','#c9d46a','#7fa33a','#3f5f14'];
 function toggleVista(){
-  return `<div class="seg"><button class="${S.vista==='lista'?'on':''}" onclick="S.vista='lista';viewPiante()">☰ Lista</button><button class="${S.vista==='mappa'?'on':''}" onclick="S.vista='mappa';viewPiante()">🗺️ Mappa</button></div>`;
+  return `<div class="seg seg-piante">${[['lista','🌳 Piante'],['terreni','📍 Appezzamenti'],['mappa','🗺️ Mappa']].map(([k,l])=>`<button class="${S.vista===k?'on':''}" onclick="S.vista='${k}';viewPiante()">${l}</button>`).join('')}</div>`;
+}
+function viewAppezzamenti(){
+  const st = puo('struttura');
+  $('#view').innerHTML = `${toggleVista()}
+    ${S.appezzamenti.map(a=>{ const n = S.piante.filter(p=>p.appezzamento_id===a.id).length, ind = indirizzoLotto(a), cat = catastoLotto(a);
+      return `<div class="card lotto"><h2>📍 ${esc(a.nome)}<span class="sp"></span>${st?`<button class="btn sm sec" onclick="formAppezzamento('${a.id}')">Modifica</button>`:''}</h2>
+        <div class="s">${[n + (n === 1 ? ' pianta' : ' piante'), a.superficie_mq ? num(a.superficie_mq,0)+' m²' : null, cat].filter(Boolean).map(esc).join(' · ')}</div>
+        ${ind ? `<div class="s" style="margin-top:3px">${esc(ind)}</div>` : st ? `<div class="s" style="margin-top:3px;color:var(--gold)">Aggiungi l'indirizzo per vedere meteo e percorso</div>` : ''}
+        <div class="actions" style="margin-top:10px;flex-wrap:wrap"><button class="btn sm sec" onclick="S.filtroApp='${a.id}';S.vista='lista';viewPiante()">🌳 Vedi le piante</button>
+          ${navigaLotto(a) ? `<a class="btn sm sec" href="${navigaLotto(a)}" target="_blank" rel="noopener">🧭 Portami lì</a>` : ''}
+          ${st ? `<button class="btn sm sec" onclick="formBlocco('${a.id}')">+ Piante</button>` : ''}</div></div>`; }).join('')
+      || `<div class="card"><h2>📍 Nessun appezzamento</h2><p class="muted" style="margin:0 0 10px">Un appezzamento è un pezzo di terreno con le sue piante. Con l'indirizzo vedi il meteo della zona e puoi farti portare lì dal navigatore.</p></div>`}
+    ${st ? `<button class="btn block" onclick="formAppezzamento()">+ Nuovo appezzamento</button>` : ''}`;
 }
 function viewMappa(){
   const con = S.piante.filter(p=>p.lat!=null&&p.lng!=null);
@@ -832,8 +979,7 @@ async function assegnaPos(id, lat, lng, acc){
   const p = pianta(id); if (!p) return;
   if (p.lat!=null && !confirm(`${p.codice} ha già una posizione. Sostituirla?`)) return;
   const v = { lat:+lat.toFixed(7), lng:+lng.toFixed(7) };
-  const { error } = await sb.from('piante').update(v).eq('id', id);
-  if (error) return fail(error);
+  try { await save('piante', v, id); } catch(e) { return fail(e); }
   Object.assign(p, v);
   const next = S.piante.find(x=>x.lat==null||x.lng==null);
   S.posSel = next?.id || id;
@@ -933,7 +1079,7 @@ function consigliMeteo(gs, luogoId){
 async function meteoHome(){
   const box = $('#meteoCard'); if (!box) return;
   const luoghi = luoghiMeteo();
-  if (!luoghi.length) { box.innerHTML = `<h2>🌤️ Meteo</h2><div class="muted">Aggiungi l'indirizzo di un appezzamento (⚙︎) o posiziona le piante sulla mappa per vedere il meteo della zona.</div>`; return; }
+  if (!luoghi.length) { box.innerHTML = `<h2>🌤️ Meteo</h2><div class="muted">Aggiungi l'indirizzo di un appezzamento (Piante → Appezzamenti) o posiziona le piante sulla mappa per vedere il meteo della zona.</div>`; return; }
   const L0 = luoghi.find(l=>l.id===S.meteoLuogo) || luoghi[0]; S.meteoLuogo = L0.id;
   try {
     const d = await meteo(L0.lat, L0.lng); if (!$('#meteoCard')) return;
@@ -1081,15 +1227,18 @@ function fieldHtml(f){
 }
 function selPiante(m){ document.querySelectorAll('input[name=piante]').forEach(c=>c.checked = m===true ? true : m===false ? false : (c.checked || c.dataset.app===m)); }
 
-function openForm({title, fields, onSubmit, onDelete, extra=''}){
+function openForm({title, fields, onSubmit, onDelete, extra='', sezioni={}}){
   fields = fields.filter(Boolean);
-  const rows = []; // affianca campi marcati half
+  const rows = [], perSez = {}; // affianca campi marcati half; i campi con "sez" vanno in un riquadro apribile
   for (let i=0;i<fields.length;i++){
-    const f=fields[i];
-    if (f.half && fields[i+1]?.half){ rows.push(`<div class="grid2"><div>${fieldHtml(f)}</div><div>${fieldHtml(fields[i+1])}</div></div>`); i++; }
-    else rows.push(fieldHtml(f));
+    const f=fields[i]; let h;
+    if (f.half && fields[i+1]?.half){ h = `<div class="grid2"><div>${fieldHtml(f)}</div><div>${fieldHtml(fields[i+1])}</div></div>`; i++; }
+    else h = fieldHtml(f);
+    if (f.gruppo) h = `<div data-gruppo="${f.gruppo}">${h}</div>`;
+    if (f.sez) (perSez[f.sez] ||= []).push(h); else rows.push(h);
   }
-  openSheet(`<h3>${esc(title)}</h3><form id="frm">${rows.join('')}${extra}
+  const apribili = Object.entries(perSez).map(([k, hs]) => `<details class="altro" data-sez="${k}" ${sezioni[k]?.open ? 'open' : ''}><summary>${esc(sezioni[k]?.t || 'Più dettagli')}</summary><div class="altro-in">${hs.join('')}</div></details>`).join('');
+  openSheet(`<h3>${esc(title)}</h3><form id="frm">${rows.join('')}${apribili}${extra}
     <div class="actions">${onDelete?'<button type="button" class="btn danger" id="del">Elimina</button>':''}<button type="button" class="btn sec" onclick="closeSheet()">Annulla</button><button class="btn" type="submit">Salva</button></div></form>`);
   const frm = $('#frm');
   frm.onsubmit = async e => {
@@ -1102,10 +1251,13 @@ function openForm({title, fields, onSubmit, onDelete, extra=''}){
       vals[f.name] = v;
     }
     const btn = frm.querySelector('[type=submit]'); btn.disabled = true; btn.textContent='Salvo…';
-    try { await onSubmit(vals); closeSheet(); await refresh(); toast('Salvato ✓'); }
+    S._inCoda = false;
+    try { await onSubmit(vals); closeSheet();
+      if (S._inCoda) { render(); toast('📲 Salvato sul telefono: lo invio appena c\'è campo'); }
+      else { await refresh(); toast('Salvato ✓'); } }
     catch(err){ fail(err); btn.disabled=false; btn.textContent='Salva'; }
   };
-  if (onDelete) $('#del').onclick = async ()=>{ try{ if(await onDelete()){ closeSheet(); await refresh(); toast('Eliminato'); } }catch(err){ fail(err); } };
+  if (onDelete) $('#del').onclick = async ()=>{ S._inCoda = false; try{ if(await onDelete()){ closeSheet(); if (S._inCoda) render(); else await refresh(); toast('Eliminato'); } }catch(err){ fail(err); } };
 }
 
 const appOpts = () => S.appezzamenti.map(a=>[a.id,a.nome]);
@@ -1137,7 +1289,7 @@ function sottoMenu(){
 }
 function quickAdd(){
   const prima = { piante:'formPianta()', raccolta:'formRaccolta()', conti:'formMovimento()', vendite:{ magazzino:'formOlioMagazzino(null,\'carico\')', vetrina:'formAnnuncio()' }[S.olio] }[S.tab];
-  const voci = [['🛠️','Lavoro / trattamento','formIntervento()'],['📌','Promemoria (lavoro da fare)','formPromemoria()'],['🧺','Raccolta','formRaccolta()'],['🏭','Molitura','formMolitura()','struttura'],['💶','Spesa o entrata','formMovimento()','soldi'],['🌳','Pianta','formPianta()','struttura'],
+  const voci = [['🛠️','Lavoro / trattamento','formIntervento()'],['📌','Promemoria (lavoro da fare)','formPromemoria()'],['🧺','Raccolta','formRaccolta()'],['🏭','Molitura','formMolitura()','struttura'],['💶','Spesa o entrata','formMovimento()','soldi'],['🌳','Pianta','formPianta()','struttura'],['📍','Appezzamento','formAppezzamento()','struttura'],
     ['🛢️','Olio in magazzino','formOlioMagazzino(null,\'carico\')','soldi'],['📣','Annuncio per i clienti','formAnnuncio()','soldi']]
     .filter(x => !x[3] || puo(x[3])).filter(x => x[2] !== 'formAnnuncio()' || negozio());
   voci.sort((a, b) => (b[2] === prima) - (a[2] === prima));
@@ -1288,48 +1440,56 @@ function gps(){
     ()=>toast('Posizione non disponibile'),{enableHighAccuracy:true,timeout:10000});
 }
 
-function formBlocco(){
+function formBlocco(appId){
   openForm({ title:'Aggiungi piante in blocco', fields:[
     {name:'prefisso',label:'Prefisso codice',value:'A-',half:true},
     {name:'cifre',label:'Cifre (es. 3 → 001)',type:'number',value:1,half:true},
     {name:'da',label:'Dal numero',type:'number',required:true,value:1,half:true},
     {name:'a',label:'Al numero',type:'number',required:true,value:50,half:true},
-    {name:'appezzamento_id',label:'Appezzamento',type:'select',options:appOpts()},
+    {name:'appezzamento_id',label:'Appezzamento',type:'select',options:appOpts(),value:typeof appId==='string'?appId:(S.appezzamenti.length===1?S.appezzamenti[0].id:null)},
     {name:'varieta',label:'Varietà',half:true},
     {name:'anno_impianto',label:'Anno impianto',type:'number',half:true}],
     onSubmit: async v=>{
       if (v.a < v.da || v.a - v.da > 2000) throw new Error('Intervallo non valido (max 2000 piante)');
       const rows=[]; for(let n=v.da;n<=v.a;n++) rows.push({codice:(v.prefisso||'')+String(n).padStart(v.cifre||1,'0'),appezzamento_id:v.appezzamento_id,varieta:v.varieta,anno_impianto:v.anno_impianto});
-      const { error } = await sb.from('piante').insert(rows.map(r=>({ ...r, user_id: S.owner || S.user.id }))); if (error) throw error;
+      await scrivi({ k:'ins', t:'piante', v:rows.map(r=>({ id:nuovoId(), ...r, user_id: S.owner || S.user.id })) });
     }});
 }
 
 function formIntervento(id, preset, base){
   const i = S.interventi.find(x=>x.id===id) || base || {};
   const sel = id ? (i.intervento_piante||[]).map(x=>x.pianta_id) : (preset||[]);
+  const dettagli = !!(i.descrizione || i.ore || i.costo);
   openForm({ title: id?'Modifica lavoro':'Nuovo lavoro', fields:[
-    {name:'tipo',label:'Tipo',type:'select',options:TIPI,value:i.tipo||'potatura',empty:false,half:true},
-    {name:'data',label:'Data',type:'date',required:true,value:i.data||today(),half:true},
-    {name:'descrizione',label:'Descrizione',value:i.descrizione,ph:'es. potatura di produzione'},
-    {name:'prodotto',label:'Prodotto',value:i.prodotto,ph:'es. concime, fitofarmaco'},
-    {name:'dose',label:'Dose',type:'number',value:i.dose,half:true},
+    {name:'tipo',label:'Cosa hai fatto',type:'select',options:TIPI.map(t=>[t,(TIPO_IC[t]||'')+' '+t[0].toUpperCase()+t.slice(1)]),value:i.tipo||'potatura',empty:false,half:true},
+    {name:'data',label:'Quando',type:'date',required:true,value:i.data||today(),half:true},
+    {name:'appezzamento_id',label:'Dove',type:'select',options:appOpts(),value:i.appezzamento_id,empty:'Tutto l\'uliveto'},
+    {name:'prodotto',label:'Prodotto',value:i.prodotto,ph:'es. Poltiglia bordolese',gruppo:'prodotto'},
+    {name:'dose',label:'Dose',type:'number',value:i.dose,half:true,gruppo:'prodotto'},
     {name:'unita',label:'Unità',value:i.unita,ph:'kg, L, g/hl…',half:true},
-    {name:'giorni_carenza',label:'Giorni di carenza',type:'number',value:i.giorni_carenza,hint:'Per i trattamenti: dall\'etichetta del prodotto. L\'app ti avvisa fino a quando non raccogliere.'},
-    {name:'ore',label:'Ore di lavoro',type:'number',value:i.ore,half:true},
-    puo('soldi') && {name:'costo',label:'Costo (€)',type:'number',value:i.costo,half:true},
-    {name:'appezzamento_id',label:'Appezzamento',type:'select',options:appOpts(),value:i.appezzamento_id,empty:'Intero uliveto / piante scelte sotto'},
-    {name:'piante',label:'Piante specifiche (facoltativo)',type:'piante',value:sel},
-    !id && {name:'ripeti',label:'🔔 Ricordamelo di nuovo tra… (giorni, facoltativo)',type:'number',ph:'es. 15',hint:'Crea un promemoria con lo stesso lavoro: utile per i trattamenti da ripetere.'}],
+    {name:'giorni_carenza',label:'Giorni di carenza',type:'number',value:i.giorni_carenza,hint:'Dall\'etichetta: l\'app ti avvisa fino a quando non raccogliere.',gruppo:'carenza'},
+    !id && {name:'ripeti',label:'🔔 Ripetilo tra… giorni',type:'number',ph:'es. 15 (facoltativo)',gruppo:'prodotto'},
+    {name:'piante',label:'Piante',type:'piante',value:sel,sez:'piante'},
+    {name:'descrizione',label:'Note',value:i.descrizione,ph:'es. potatura di produzione',sez:'altro'},
+    {name:'ore',label:'Ore di lavoro',type:'number',value:i.ore,half:true,sez:'altro'},
+    puo('soldi') && {name:'costo',label:'Costo (€)',type:'number',value:i.costo,half:true,sez:'altro'}],
+    sezioni:{ piante:{ t:`🌳 Solo alcune piante${sel.length ? ` (${sel.length})` : ''}`, open:sel.length > 0 }, altro:{ t:'Note, ore e costo', open:dettagli } },
     onSubmit: async v=>{
       const { piante, ripeti, ...rec } = v;
       const saved = await save('interventi', rec, id);
-      if (base?._prom) { const { error } = await sb.from('promemoria').update({ fatto:true, fatto_at:new Date().toISOString(), intervento_id:saved.id }).eq('id', base._prom); if (error) throw error; }
+      if (base?._prom) await save('promemoria', { fatto:true, fatto_at:new Date().toISOString(), intervento_id:saved.id }, base._prom);
       if (ripeti > 0) await save('promemoria', { data: addDays(rec.data, Math.round(ripeti)), tipo: rec.tipo, prodotto: rec.prodotto,
         titolo: (rec.descrizione || rec.tipo[0].toUpperCase() + rec.tipo.slice(1)) + (rec.prodotto ? ' · ' + rec.prodotto : ''), appezzamento_id: rec.appezzamento_id });
-      if (id){ const { error } = await sb.from('intervento_piante').delete().eq('intervento_id', id); if (error) throw error; }
-      if (piante.length){ const { error } = await sb.from('intervento_piante').insert(piante.map(p=>({intervento_id:saved.id,pianta_id:p,user_id:S.owner || S.user.id}))); if (error) throw error; }
+      if (id) await scrivi({ k:'delw', t:'intervento_piante', col:'intervento_id', val:id });
+      if (piante.length) await scrivi({ k:'ins', t:'intervento_piante', v:piante.map(p=>({intervento_id:saved.id,pianta_id:p,user_id:S.owner || S.user.id})) });
     },
     onDelete: id&&(()=>remove('interventi',id)) });
+  const conProdotto = () => { const t = $('#frm').tipo.value; return ['trattamento','concimazione'].includes(t) || !!$('#frm').prodotto.value; };
+  const aggiorna = () => { const t = $('#frm').tipo.value;
+    $$('#frm [data-gruppo=prodotto]').forEach(e => e.hidden = !conProdotto());
+    $$('#frm [data-gruppo=carenza]').forEach(e => e.hidden = !(t === 'trattamento' || $('#frm').giorni_carenza.value)); };
+  $('#frm').tipo.onchange = aggiorna; aggiorna();
+  $('#frm').addEventListener('change', e => { if (e.target.name === 'piante') { const n = $$('#frm input[name=piante]:checked').length; $('#frm [data-sez=piante] summary').textContent = '🌳 Solo alcune piante' + (n ? ` (${n})` : ''); } });
 }
 
 function formRaccolta(id, piantaId){
@@ -1382,11 +1542,8 @@ function openSettings(){
   const st = puo('struttura');
   openSheet(`<h3>Impostazioni</h3>
     ${cardUliveti()}
-    <div class="card"><h2>Appezzamenti<span class="sp"></span>${st?'<button class="btn sm sec" onclick="formAppezzamento()">+ Nuovo</button>':''}</h2>
-      ${S.appezzamenti.map(a=>`<div class="row ${st?'tap':''}" onclick="${st?`formAppezzamento('${a.id}')`:''}"><div class="main"><div class="t">${esc(a.nome)}</div>
-        <div class="s">${S.piante.filter(p=>p.appezzamento_id===a.id).length} piante${a.superficie_mq?' · '+num(a.superficie_mq,0)+' m²':''}${catastoLotto(a)?' · '+esc(catastoLotto(a)):''}</div>
-        ${indirizzoLotto(a)?`<div class="s" style="white-space:normal">📍 ${esc(indirizzoLotto(a))}</div>`:''}</div>
-        ${navigaLotto(a)?`<a class="btn sm sec" href="${navigaLotto(a)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Vai ↗</a>`:'<div class="muted">›</div>'}</div>`).join('')||'<div class="empty">Nessun appezzamento.</div>'}</div>
+    <div class="card"><div class="row tap" onclick="closeSheet();S.tab='piante';S.vista='terreni';render()"><div style="font-size:22px">📍</div><div class="main"><div class="t">Appezzamenti</div>
+      <div class="s">Ora sono nella sezione Piante</div></div><div class="muted">›</div></div></div>
     <div class="card" id="cardNotifiche"><h2>🔔 Notifiche</h2><div class="muted">Controllo…</div></div>
     ${puo('team') ? cardTeam() : ''}
     <div class="card"><h2>Dati</h2>
@@ -2258,9 +2415,9 @@ function completaPromemoria(id){
 async function rimandaPromemoria(id, giorni){
   const p = S.promemoria.find(x => x.id === id);
   const nuova = addDays(giorniDa(p.data) < 0 ? today() : p.data, giorni);
-  const { error } = await sb.from('promemoria').update({ data:nuova, notificato_at:null }).eq('id', id);
-  if (error) return fail(error);
-  closeSheet(); await refresh(); toast('Rimandato al ' + fdate(nuova));
+  S._inCoda = false;
+  try { await save('promemoria', { data:nuova, notificato_at:null }, id); } catch(e) { return fail(e); }
+  closeSheet(); if (S._inCoda) render(); else await refresh(); toast('Rimandato al ' + fdate(nuova));
 }
 
 /* ===== Notifiche push ===== */
@@ -2332,6 +2489,11 @@ registraSW();
    Ogni voce: ic (icona), t (titolo), d (descrizione), facoltativi perm ('soldi' | 'struttura' | 'team')
    per mostrarla solo a chi può usarla, cta (testo del pulsante) e vai (funzione che porta alla novità). */
 const NOVITA = [
+  { n:11, data:'2026-11-02', titolo:'Più comoda in campagna', voci:[
+    { ic:'📵', t:'Salva anche senza campo', d:'Lavori, raccolte, piante e promemoria si salvano sul telefono anche senza rete. In alto vedi quanti sono in attesa: partono da soli appena torna il segnale.' },
+    { ic:'☀️', t:'La pagina Oggi', d:'Appena apri l\'app vedi cosa c\'è da fare, le carenze in corso e il pulsante per registrare un lavoro. I numeri dell\'annata sono più sotto.', cta:'Vai a Oggi', vai:() => { S.tab = 'home'; render(); } },
+    { ic:'✂️', t:'Registrare un lavoro è più veloce', d:'Bastano tipo, data e dove. Prodotto, dose e carenza compaiono solo per concimazioni e trattamenti; note, ore e costo sono in un riquadro a parte.' },
+    { ic:'📍', t:'Appezzamenti in Piante', d:'Li trovi in Piante → Appezzamenti, con indirizzo, numero di piante e il pulsante per farti portare lì.', perm:'struttura', cta:'Apri', vai:() => { S.tab = 'piante'; S.vista = 'terreni'; render(); } } ]},
   { n:10, data:'2026-11-02', titolo:'Nuovo aspetto e menu più semplice', voci:[
     { ic:'✨', t:'Effetto vetro', d:'Barre e schede trasparenti come il vetro, con colori più morbidi; la barra in basso ora fluttua sopra i contenuti. Se nelle impostazioni del telefono hai ridotto le trasparenze, l\'app usa colori pieni.' },
     { ic:'🧭', t:'Quattro sezioni invece di sei', d:'Annata (riepilogo e conti), Piante, Campagna (lavori, raccolta e frantoio) e Olio (ordini, vetrina e magazzino). Dentro ogni sezione passi da una pagina all\'altra con i pulsanti in alto.' },
@@ -2347,7 +2509,7 @@ const NOVITA = [
   { n:7, data:'2026-11-01', titolo:'Le novità, sempre a portata di mano', voci:[
     { ic:'✨', t:'Cosa c\'è di nuovo', d:'Ogni volta che l\'app si aggiorna, questa finestra ti mostra le funzioni nuove. Puoi rileggerle quando vuoi da ⚙︎ → Novità.' } ]},
   { n:6, data:'2026-11-01', titolo:'Posizione da Google Maps', voci:[
-    { ic:'🗺️', t:'Incolla il punto da Google Maps', d:'Nella scheda dell\'appezzamento puoi incollare coordinate o link di Google Maps, anche quelli brevi del tasto Condividi, per localizzare il terreno.', perm:'struttura', cta:'Apri appezzamenti', vai:() => openSettings() } ]},
+    { ic:'🗺️', t:'Incolla il punto da Google Maps', d:'Nella scheda dell\'appezzamento puoi incollare coordinate o link di Google Maps, anche quelli brevi del tasto Condividi, per localizzare il terreno.', perm:'struttura', cta:'Apri appezzamenti', vai:() => { S.tab = 'piante'; S.vista = 'terreni'; render(); } } ]},
   { n:5, data:'2026-11-01', titolo:'Notifiche e promemoria', voci:[
     { ic:'🔔', t:'Notifiche sul telefono', d:'Gelate e piogge in arrivo, giorni buoni per trattare, lavori del giorno e, se gestisci le vendite, nuovi clienti e ordini. Anche ad app chiusa.', cta:'Attiva le notifiche',
       vai:() => { openSettings(); setTimeout(() => $('#cardNotifiche')?.scrollIntoView({ behavior:'smooth', block:'center' }), 450); } },
@@ -2549,7 +2711,7 @@ async function avvia(){
     Object.assign(S, c); S._daCache = true; S._caricato = true; render(); apriDaLink(); guidaSeNuova();
     const prima = S.owner; await aggiornaAccessi();
     if (S.owner !== prima) { svuotaStato(); showSplash(); }
-    refresh(); novitaSeNuove(); return;
+    refresh(); novitaSeNuove(); return;  // refresh invia prima gli eventuali salvataggi in coda
   }
   showSplash(); await aggiornaAccessi(); await refresh();
   if (!S._caricato) splashError('Non riesco a caricare i dati. Controlla la connessione.');
