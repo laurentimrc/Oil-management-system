@@ -491,12 +491,12 @@ async function loadAll(){
   scriviCache();
 }
 /* Copia locale dei dati: all'apertura l'app mostra subito l'ultima versione e intanto aggiorna */
-const CACHE_TAB = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti','negozi','formati','clienti','ordini','collaboratori','promemoria','annunci'];
+const CACHE_TAB = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti','negozi','formati','clienti','ordini','collaboratori','promemoria','annunci','magazzino'];
 const cacheKey = () => 'uliveto:dati:' + S.user?.id + ':' + (S.owner || S.user?.id);
 function scriviCache(){ try { localStorage.setItem(cacheKey(), JSON.stringify(Object.fromEntries(CACHE_TAB.map(t=>[t,S[t]])))); } catch(e){} }
 function leggiCache(){ try { const c = JSON.parse(localStorage.getItem(cacheKey()) || 'null'); return c && CACHE_TAB.every(t=>Array.isArray(c[t])) ? c : null; } catch(e){ return null; } }
 function svuotaCache(){ try { Object.keys(localStorage).filter(k=>k.startsWith('uliveto:dati:')).forEach(k=>localStorage.removeItem(k)); } catch(e){} }
-const TAB_PROPRIE = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti','promemoria'];
+const TAB_PROPRIE = ['appezzamenti','piante','interventi','raccolte','moliture','movimenti','promemoria','magazzino_olio'];
 async function save(table, values, id){
   if (!id && TAB_PROPRIE.includes(table) && values.user_id == null) values = { ...values, user_id: S.owner || S.user.id };
   const q = id ? sb.from(table).update(values).eq('id',id) : sb.from(table).insert(values);
@@ -1286,7 +1286,7 @@ function openSettings(){
       <div class="row"><div class="main"><div class="t">Account</div><div class="s">${esc(S.user.email)}</div></div><button class="btn sm danger" onclick="logout()">Esci</button></div></div>`);
 }
 async function esporta(){
-  const json = JSON.stringify({esportato:new Date().toISOString(),appezzamenti:S.appezzamenti,piante:S.piante,interventi:S.interventi,raccolte:S.raccolte,moliture:S.moliture,movimenti:S.movimenti},null,2);
+  const json = JSON.stringify({esportato:new Date().toISOString(),appezzamenti:S.appezzamenti,piante:S.piante,interventi:S.interventi,raccolte:S.raccolte,moliture:S.moliture,movimenti:S.movimenti,magazzino_olio:S.magazzino||[]},null,2);
   const filename = `uliveto-backup-${today()}.json`;
   const dl = window.claude?.use ? await window.claude.use('downloads') : null;
   if (dl) {
@@ -1684,9 +1684,13 @@ function liveGestore(){
 
 /* ===== Vendite: parte del gestore ===== */
 async function loadVendite(){
-  if (!puo('soldi')) { S.negozi = []; S.formati = []; S.clienti = []; S.ordini = []; S.annunci = []; return; }
-  const ne = await sb.from('negozi').select('*').eq('owner_id', S.owner || S.user.id);
+  if (!puo('soldi')) { S.negozi = []; S.formati = []; S.clienti = []; S.ordini = []; S.annunci = []; S.magazzino = []; return; }
+  const [ne, mg] = await Promise.all([
+    sb.from('negozi').select('*').eq('owner_id', S.owner || S.user.id),
+    sb.from('magazzino_olio').select('*').eq('user_id', S.owner || S.user.id).order('data', { ascending:false }).order('created_at', { ascending:false })
+  ]);
   if (ne.error) throw ne.error;
+  S.magazzino = mg.error ? [] : (mg.data || []);
   S.negozi = ne.data || [];
   const n = S.negozi[0];
   if (!n) { S.formati = []; S.clienti = []; S.ordini = []; S.annunci = []; return; }
@@ -1704,13 +1708,91 @@ const negozio = () => (S.negozi || [])[0];
 function daGestire(){ return (S.clienti || []).filter(c => c.stato === 'in_attesa').length + (S.ordini || []).filter(o => o.stato === 'richiesta').length; }
 const clienteDi = id => (S.clienti || []).find(c => c.id === id) || {};
 function olioAnnata(){ return sum((S.moliture || []).filter(m => inYear(m.data, new Date().getFullYear())), m => litri(m) || 0); }
+
+/* ===== Magazzino dell'olio ===== */
+/* Entra con le moliture e con l'olio aggiunto a mano (anche degli anni precedenti); esce con gli usi registrati e con gli ordini. */
+function magazzinoAnnate(){
+  const per = {};
+  const a = y => per[y] ||= { annata:y, prodotto:0, aggiunto:0, usato:0 };
+  (S.moliture || []).forEach(m => { if (m.data) a(+m.data.slice(0,4)).prodotto += litri(m) || 0; });
+  (S.magazzino || []).forEach(g => { a(g.annata)[g.tipo === 'scarico' ? 'usato' : 'aggiunto'] += Number(g.litri) || 0; });
+  return Object.values(per).map(x => ({ ...x, totale: x.prodotto + x.aggiunto - x.usato })).sort((x, y) => y.annata - x.annata);
+}
+const olioEntrato = () => sum(magazzinoAnnate(), x => x.totale);
+const litriPrenotati = () => sum((S.ordini || []).filter(o => o.stato !== 'annullato'), litriOrdine);
+function cardMagazzino(){
+  const n = negozio(), ann = magazzinoAnnate(), ent = olioEntrato(), pren = litriPrenotati(), rim = ent - pren;
+  const vend = n?.litri_in_vendita != null ? Number(n.litri_in_vendita) : null;
+  const daVendere = vend != null ? Math.max(0, vend - pren) : null;
+  const perVoi = vend != null ? Math.max(0, ent - vend) : null;
+  const pct = x => ent > 0 ? Math.max(0, Math.min(100, x / ent * 100)) : 0;
+  const movs = (S.magazzino || []).slice(0, 6);
+  return `<div class="card"><h2>🛢️ Magazzino olio<span class="sp"></span><button class="btn sm sec" onclick="formOlioMagazzino(null,'carico')">+ Olio</button></h2>
+    <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><div style="font-size:26px;font-weight:700;letter-spacing:-.4px">${num(rim)} L</div><div class="muted">rimasti in magazzino</div></div>
+    ${ent > 0 ? `<div style="display:flex;height:10px;border-radius:99px;overflow:hidden;background:var(--line);margin:8px 0 6px" aria-hidden="true">
+        <div style="width:${pct(Math.min(pren, ent))}%;background:var(--olive)"></div>
+        ${daVendere != null ? `<div style="width:${pct(Math.min(daVendere, Math.max(0, ent - pren)))}%;background:var(--gold)"></div>` : ''}</div>
+      <div class="muted" style="font-size:12.5px;display:flex;gap:12px;flex-wrap:wrap">
+        <span><b style="color:var(--olive)">●</b> prenotati o venduti ${num(pren)} L</span>
+        ${daVendere != null ? `<span><b style="color:var(--gold)">●</b> ancora in vendita ${num(daVendere)} L</span><span><b style="color:var(--muted)">●</b> non in vendita ${num(perVoi)} L</span>` : '<span>nessun limite di vendita impostato</span>'}</div>`
+      : '<div class="muted" style="margin:4px 0">Il magazzino è vuoto. L\'olio delle moliture entra da solo; qui puoi aggiungere quello degli anni precedenti che hai ancora in cantina.</div>'}
+    ${rim < 0 ? `<div class="hint" style="color:var(--red)">Hai prenotato più olio di quello registrato: aggiungi l'olio mancante o controlla le moliture.</div>` : ''}
+    <div class="actions" style="margin-top:10px;flex-wrap:wrap">
+      ${n ? `<button class="btn sm" onclick="formLitriVendita()">🏷️ Litri in vendita</button>` : ''}
+      <button class="btn sm sec" onclick="formOlioMagazzino(null,'scarico')">− Olio usato</button></div>
+    ${ann.length ? `<div style="margin-top:12px"><div class="muted" style="font-size:12px;margin-bottom:2px">Per annata</div>
+      ${ann.map(x => `<div class="row"><div class="main"><div class="t">Olio ${x.annata}</div>
+        <div class="s">${[x.prodotto && `prodotto ${num(x.prodotto)} L`, x.aggiunto && `aggiunto ${num(x.aggiunto)} L`, x.usato && `usato ${num(x.usato)} L`].filter(Boolean).join(' · ') || '—'}</div></div>
+        <div class="n">${num(x.totale)} L</div></div>`).join('')}</div>` : ''}
+    ${movs.length ? `<div style="margin-top:8px"><div class="muted" style="font-size:12px;margin-bottom:2px">Aggiunte e uscite a mano</div>
+      ${movs.map(g => `<div class="row tap" onclick="formOlioMagazzino('${g.id}')"><div style="font-size:20px">${g.tipo === 'scarico' ? '📤' : '📥'}</div><div class="main">
+        <div class="t">${esc(g.descrizione || (g.tipo === 'scarico' ? 'Olio usato' : 'Olio aggiunto'))}</div><div class="s">annata ${g.annata} · ${fdate(g.data)}</div></div>
+        <div class="n" style="color:${g.tipo === 'scarico' ? 'var(--red)' : 'var(--olive)'}">${g.tipo === 'scarico' ? '−' : '+'}${num(g.litri, 2)} L</div></div>`).join('')}</div>` : ''}
+  </div>`;
+}
+function formOlioMagazzino(id, tipo){
+  const g = (S.magazzino || []).find(x => x.id === id) || {};
+  const t = g.tipo || tipo || 'carico', anno = new Date().getFullYear();
+  openForm({ title: id ? 'Modifica movimento di magazzino' : t === 'scarico' ? 'Olio usato o tolto' : 'Aggiungi olio al magazzino', fields:[
+    {name:'tipo',label:'Cosa registri',type:'select',options:[['carico','📥 Olio che aggiungo'],['scarico','📤 Olio che tolgo (uso in casa, regali, perdite)']],value:t,empty:false},
+    {name:'annata',label:'Annata dell\'olio',type:'number',required:true,value:g.annata ?? (t === 'carico' ? anno - 1 : anno),half:true},
+    {name:'litri',label:'Litri',type:'number',required:true,value:g.litri,half:true},
+    {name:'descrizione',label:'Descrizione',value:g.descrizione,ph: t === 'scarico' ? 'es. Uso in famiglia' : 'es. Latte in cantina del 2025'},
+    {name:'data',label:'Data',type:'date',value:g.data || today()},
+    {name:'note',label:'Note',type:'textarea',value:g.note}],
+    extra: id ? '' : `<div class="hint" style="margin-top:-4px">L'olio delle moliture entra in magazzino da solo: qui registra solo quello in più, per esempio l'olio degli anni precedenti.</div>`,
+    onSubmit: v => {
+      if (!(v.litri > 0)) throw new Error('Indica quanti litri');
+      if (!(v.annata >= 1950 && v.annata <= anno + 1)) throw new Error('Annata non valida');
+      v.annata = Math.round(v.annata);
+      return save('magazzino_olio', v, id);
+    },
+    onDelete: id && (() => remove('magazzino_olio', id)) });
+}
+function controllaLitriVendita(l){
+  if (l == null) return;
+  const ent = olioEntrato(), pren = litriPrenotati();
+  if (l < 0) throw new Error('I litri non possono essere negativi');
+  if (l > ent + 1e-9) throw new Error(`In magazzino ci sono ${num(ent)} L: non puoi metterne in vendita di più. Aggiungi prima l'olio al magazzino.`);
+  if (l < pren - 1e-9) throw new Error(`Hai già ${num(pren)} L prenotati: i litri in vendita non possono essere meno.`);
+}
+function formLitriVendita(){
+  const n = negozio(); if (!n) return formNegozio();
+  const ent = olioEntrato(), pren = litriPrenotati();
+  openForm({ title:'Litri in vendita', fields:[
+    {name:'litri_in_vendita',label:'Quanti litri vuoi vendere in tutto',type:'number',value:n.litri_in_vendita,
+      hint:`Olio in magazzino: ${num(ent)} L, di cui ${num(pren)} L già prenotati. Quello non in vendita lo tieni per te. Lascia vuoto per non limitare le prenotazioni.`}],
+    extra:`<div class="chips" style="margin:-2px 0 6px">${[[1,'Tutto'],[.75,'¾'],[.5,'Metà']].map(([k,l]) => { const v = Math.max(pren, Math.floor(ent * k * 10) / 10);
+      return `<button type="button" class="chip" onclick="$('#frm').litri_in_vendita.value='${v}'">${l} · ${num(v)} L</button>`; }).join('')}</div>`,
+    onSubmit: v => { controllaLitriVendita(v.litri_in_vendita); return save('negozi', { litri_in_vendita: v.litri_in_vendita }, n.id); } });
+}
 function viewVendite(){
   const v = $('#view'), n = negozio();
   if (!n) {
     v.innerHTML = `<div class="card"><h2>🛒 Vendi il tuo olio</h2>
       <p style="margin-top:0">Attiva il tuo negozio: avrai un link da mandare ai clienti. Si registrano, tu li autorizzi, loro prenotano e tu consegni.</p>
       <ul class="season"><li>Solo i clienti che approvi possono prenotare</li><li>Decidi tu il prezzo su ogni ordine</li><li>Consegna all'indirizzo del cliente</li><li>Gli incassi finiscono da soli nei Conti</li></ul>
-      <div class="actions"><button class="btn block" onclick="formNegozio()">Attiva il negozio</button></div></div>`;
+      <div class="actions"><button class="btn block" onclick="formNegozio()">Attiva il negozio</button></div></div>${cardMagazzino()}`;
     return;
   }
   const attivi = S.ordini.filter(o => o.stato !== 'annullato');
@@ -1721,11 +1803,12 @@ function viewVendite(){
   const ordini = S.ordini.filter(o => filt === 'tutti' ? true : filt === 'aperti' ? !['consegnato','annullato'].includes(o.stato) : o.stato === filt);
   v.innerHTML = `
     <div class="kpis">
-      <div class="kpi"><div class="l">Litri in vendita</div><div class="v">${n.litri_in_vendita != null ? num(n.litri_in_vendita) + ' L' : '—'}</div><div class="d">olio ${new Date().getFullYear()}: ${num(olioAnnata())} L</div></div>
+      <div class="kpi"><div class="l">Litri in vendita</div><div class="v">${n.litri_in_vendita != null ? num(n.litri_in_vendita) + ' L' : '—'}</div><div class="d">su ${num(olioEntrato())} L in magazzino</div></div>
       <div class="kpi"><div class="l">Prenotati</div><div class="v">${num(prenotati)} L</div>${n.litri_in_vendita != null ? `<div class="d">restano ${num(n.litri_in_vendita - prenotati)} L</div>` : ''}</div>
       <div class="kpi"><div class="l">Da confermare</div><div class="v">${S.ordini.filter(o => o.stato === 'richiesta').length}</div></div>
       <div class="kpi"><div class="l">Incassato</div><div class="v">${eur(incassato)}</div></div>
     </div>
+    ${cardMagazzino()}
     <div class="card"><h2>🔗 Link per i clienti<span class="sp"></span><span class="st ${n.attivo ? 'st-approvato' : 'st-annullato'}">${n.attivo ? 'Prenotazioni aperte' : 'Prenotazioni chiuse'}</span></h2>
       <div class="shoplink">${esc(shopUrl(n.slug))}</div>
       <div class="actions" style="margin-top:0;flex-wrap:wrap"><button class="btn sec sm" onclick="copiaLink()">📋 Copia</button><button class="btn sec sm" onclick="condividiLink()">📤 Condividi</button>
@@ -1765,11 +1848,12 @@ function formNegozio(){
     {name:'slug',label:'Indirizzo del link',required:true,value:n.slug || slugDa(nomeBase),hint:'Solo lettere minuscole, numeri e trattini. Compare nel link: …?olio=' + (n.slug || slugDa(nomeBase))},
     {name:'descrizione',label:'Presentazione per i clienti',type:'textarea',value:n.descrizione,ph:'es. Olio extravergine del nostro uliveto in Molise, raccolto a mano.'},
     {name:'note_consegna',label:'Informazioni sulla consegna',type:'textarea',value:n.note_consegna,ph:'es. Consegno il sabato a Milano e Monza. Pagamento alla consegna.'},
-    {name:'litri_in_vendita',label:'Litri messi in vendita',type:'number',value:n.litri_in_vendita,hint:`Olio prodotto nel ${new Date().getFullYear()}: ${num(olioAnnata())} L. Lascia vuoto per non limitare le prenotazioni.`},
+    {name:'litri_in_vendita',label:'Litri messi in vendita',type:'number',value:n.litri_in_vendita,hint:`In magazzino: ${num(olioEntrato())} L (olio ${new Date().getFullYear()}: ${num(olioAnnata())} L). Non puoi superarli. Lascia vuoto per non limitare le prenotazioni.`},
     {name:'attivo',label:'Prenotazioni',type:'select',options:[['true','Aperte'],['false','Chiuse']],value:String(n.attivo ?? true),empty:false}],
     onSubmit: async v => {
       v.slug = slugDa(v.slug); v.attivo = v.attivo === 'true';
       if (v.slug.length < 3) throw new Error('Il link deve avere almeno 3 caratteri');
+      if (v.litri_in_vendita !== n.litri_in_vendita) controllaLitriVendita(v.litri_in_vendita);
       const nuovo = !n.id; if (nuovo) v.owner_id = S.owner || S.user.id;
       try { const r = await save('negozi', v, n.id); if (nuovo) await creaFormatiBase(r.id); }
       catch(e){ if (String(e.message).includes('negozi_slug_key')) throw new Error('Questo indirizzo del link è già usato: scegline un altro'); throw e; }
@@ -1896,8 +1980,8 @@ function stampaQrNegozio(){
 /* ===== Collaboratori: accesso condiviso all'uliveto ===== */
 const RUOLI = { owner:'Titolare', manager:'Manager', agricoltore:'Agricoltore' };
 const RUOLI_DESC = {
-  manager: 'Vede e modifica tutto: piante, lavori, raccolta, conti e vendite. Non può gestire i collaboratori.',
-  agricoltore: 'Vede piante, mappa, meteo, lavori e raccolta. Registra lavori e raccolte e aggiorna lo stato delle piante. Non vede conti, vendite e costi.'
+  manager: 'Vede e modifica tutto: piante, lavori, raccolta, conti, vendite e magazzino dell\'olio. Non può gestire i collaboratori.',
+  agricoltore: 'Vede piante, mappa, meteo, lavori e raccolta. Registra lavori e raccolte e aggiorna lo stato delle piante. Non vede conti, vendite, magazzino dell\'olio e costi.'
 };
 const PERMESSI = { soldi:['owner','manager'], struttura:['owner','manager'], team:['owner'] };
 function puo(cosa){ return (PERMESSI[cosa] || []).includes(S.ruolo || 'owner'); }
@@ -2134,6 +2218,9 @@ registraSW();
    Ogni voce: ic (icona), t (titolo), d (descrizione), facoltativi perm ('soldi' | 'struttura' | 'team')
    per mostrarla solo a chi può usarla, cta (testo del pulsante) e vai (funzione che porta alla novità). */
 const NOVITA = [
+  { n:9, data:'2026-11-02', titolo:'Magazzino dell\'olio', voci:[
+    { ic:'🛢️', t:'Il magazzino dell\'olio', d:'Vedi quanto olio ti resta, annata per annata: quello delle moliture entra da solo, quello degli anni precedenti lo aggiungi tu. Registra anche l\'olio usato in casa o regalato.', perm:'soldi', cta:'Apri il magazzino', vai:() => { S.tab = 'vendite'; render(); setTimeout(() => formOlioMagazzino(null, 'carico'), 300); } },
+    { ic:'🏷️', t:'Scegli quanti litri vendere', d:'Titolare e manager decidono quanti litri del magazzino mettere in vendita: l\'app tiene il conto di quelli prenotati e di quelli che restano.', perm:'soldi', cta:'Scegli i litri', vai:() => { S.tab = 'vendite'; render(); setTimeout(formLitriVendita, 300); } } ]},
   { n:8, data:'2026-11-02', titolo:'Vetrina, bacheca e punti oliva', voci:[
     { ic:'🎨', t:'Vetrina personalizzabile', d:'Copertina, galleria di foto, colore, la vostra storia e le note sull\'annata. Chi apre il link la vede anche prima di essere autorizzato.', perm:'soldi', cta:'Personalizza', vai:() => { S.tab = 'vendite'; render(); setTimeout(formVetrina, 300); } },
     { ic:'📣', t:'Bacheca per i clienti', d:'Pubblica un annuncio (raccolta, olio nuovo, giorni di consegna): i clienti lo vedono subito e ricevono una notifica.', perm:'soldi', cta:'Scrivi un annuncio', vai:() => { S.tab = 'vendite'; render(); setTimeout(formAnnuncio, 300); } },
@@ -2233,6 +2320,7 @@ function guidaSchermate(){
     ['📌','Promemoria dei lavori','Programma i lavori da fare, come un trattamento da ripetere tra 15 giorni: il giorno stesso arriva l\'avviso a tutta la squadra.','Lavori → Da fare'],
     ['🌤️','Il meteo del terreno','Previsioni a 7 giorni dove si trova l\'appezzamento, con avvisi su gelate, piogge e giorni adatti ai trattamenti.','Annata'],
     ['🛒','Vendi l\'olio','Personalizza la vetrina, manda il link ai clienti e autorizzali: prenotano, accumulano punti oliva, e tu decidi il prezzo su ogni ordine.','Vendite','soldi'],
+    ['🛢️','Il magazzino dell\'olio','Quanto olio ti resta, annata per annata. Aggiungi anche quello degli anni precedenti, scegli quanti litri mettere in vendita e l\'app tiene il conto di prenotati e rimanenti.','Vendite → Magazzino','soldi'],
     ['💶','I conti dell\'annata','Spese ed entrate per categoria, con il saldo dell\'anno: i costi di lavori e frantoio e gli incassi delle vendite entrano in automatico.','Conti','soldi'],
     ['👥','Lavora in squadra','Invita un manager o chi lavora in campo: il manager gestisce tutto, l\'agricoltore registra lavori e raccolte senza vedere conti e vendite. Puoi revocare l\'accesso quando vuoi.','⚙︎ → Collaboratori','team'],
     coll ? ['🚀','Iniziamo!', agr ? 'Quando finisci un lavoro in campo, registralo subito con il pulsante +: così resta nello storico dell\'uliveto e lo vede anche il titolare.' : 'Trovi tutto nelle schede in basso. Consiglio: aggiungi l\'app alla schermata Home dal menu del browser.', null]

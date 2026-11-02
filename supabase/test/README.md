@@ -13,5 +13,6 @@ ruoli `anon` e `authenticated`).
 - `manager_vendite.sql` — il manager gestisce il negozio del titolare (14 controlli)
 - `notifiche.sql` — promemoria, preferenze, dispositivi e coda delle notifiche (17 controlli; applicare prima anche `notifiche.sql` senza le righe `create extension`)
 - `vetrina.sql` — vetrina pubblica senza dati personali, prezzi solo se consentiti, bacheca per titolare/manager/clienti autorizzati (non agricoltore), notifiche ai clienti (14 controlli; applicare prima anche `vetrina.sql` fino alla sezione «Solo su Supabase»)
+- `magazzino.sql` — magazzino dell'olio: titolare e manager sì, agricoltore ed estranei no (11 controlli; applicare prima `magazzino.sql`)
 
 Non eseguirli sul database di produzione: inseriscono utenti di prova.
