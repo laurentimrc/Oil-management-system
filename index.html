@@ -233,6 +233,7 @@ nav.tabs button.on .ic{animation:tab-pop .35s cubic-bezier(.3,1.6,.5,1)}
 .vt{--acc:#4d5a2c;--acc-soft:#e8ecd6;margin-bottom:12px}
 .vt-hero{position:relative;border-radius:var(--r);overflow:hidden;min-height:210px;display:flex;align-items:flex-end;background:linear-gradient(135deg,var(--acc),color-mix(in srgb,var(--acc) 55%,#c9a227));background-size:cover;background-position:center;color:#fff;margin-bottom:12px}
 .vt-hero.mini{min-height:130px}
+.vt-hero p.solo{font:500 17px/1.4 "Lora",Georgia,serif;margin:0;opacity:1}
 .vt-hero.foto::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05) 30%,rgba(0,0,0,.65))}
 .vt-hero-in{position:relative;padding:18px 18px 16px}
 .vt-kicker{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;opacity:.9}
@@ -1870,10 +1871,13 @@ function htmlVetrina(d, o = {}){
   if (!d) return '';
   if (d.venditore || d.dati_legali) LEG_NEG = d;
   const v = d.vetrina || {}, titolo = v.titolo || d.nome, sotto = v.sottotitolo || d.descrizione || '';
+  // il nome del negozio compare una volta sola: nell'area clienti è già nell'intestazione
+  const inApp = !!S.user && modoCliente(), titoloProprio = !!v.titolo && v.titolo.trim().toLowerCase() !== (d.nome || '').trim().toLowerCase();
+  const kicker = !inApp && titoloProprio, h1 = !inApp || titoloProprio;
   const wa = numeroWa(v.whatsapp);
   return `<div class="vt" style="${accento(v)}">
-    <div class="vt-hero ${d.copertina ? 'foto' : ''} ${o.compatta ? 'mini' : ''}" ${d.copertina ? `style="background-image:url('${esc(d.copertina)}')"` : ''}>
-      <div class="vt-hero-in"><div class="vt-kicker">🫒 ${esc(d.nome)}</div><h1>${esc(titolo)}</h1>${sotto && !o.compatta ? `<p>${esc(sotto)}</p>` : ''}</div></div>
+    ${inApp && !h1 && !sotto && !d.copertina ? '' : `<div class="vt-hero ${d.copertina ? 'foto' : ''} ${o.compatta ? 'mini' : ''}" ${d.copertina ? `style="background-image:url('${esc(d.copertina)}')"` : ''}>
+      <div class="vt-hero-in">${kicker ? `<div class="vt-kicker">🫒 ${esc(d.nome)}</div>` : ''}${h1 ? `<h1>${esc(titolo)}</h1>` : ''}${sotto && (!o.compatta || !h1) ? `<p ${h1 ? '' : 'class="solo"'}>${esc(sotto)}</p>` : ''}</div></div>`}
     ${v.annata ? `<div class="vt-annata"><span>🫒</span><div><b>L'annata</b><p>${esc(v.annata)}</p></div></div>` : ''}
     ${!o.compatta && v.storia ? `<div class="vt-sez"><h2>La nostra storia</h2><p class="vt-testo">${esc(v.storia)}</p></div>` : ''}
     ${!o.compatta && (d.galleria || []).length ? `<div class="vt-gal">${d.galleria.map(u => `<img src="${esc(u)}" loading="lazy" alt="">`).join('')}</div>` : ''}
@@ -2371,7 +2375,7 @@ function viewVendite(){
       <div class="actions"><button class="btn" onclick="formNegozio()">Completa</button></div></div>`}
     <div class="card"><h2>🎨 Vetrina<span class="sp"></span><button class="btn sm sec" onclick="anteprimaVetrina()">👀 Anteprima</button></h2>
       <div class="vt-mini tap" onclick="formVetrina()" style="${accento(n.vetrina)};${n.copertina_url ? `background-image:url('${esc(n.copertina_url)}')` : ''}">
-        <div><small>🫒 ${esc(n.nome)}</small><b>${esc(n.vetrina?.titolo || n.nome)}</b></div></div>
+        <div>${n.vetrina?.titolo && n.vetrina.titolo.trim().toLowerCase() !== n.nome.trim().toLowerCase() ? `<small>🫒 ${esc(n.nome)}</small>` : ''}<b>${esc(n.vetrina?.titolo || n.nome)}</b></div></div>
       <div class="muted" style="font-size:12.5px;margin:6px 0 8px">${[n.copertina_url && 'copertina', (n.galleria || []).length && `${n.galleria.length} foto`, n.vetrina?.storia && 'storia', n.vetrina?.annata && 'annata', Object.keys(n.vetrina?.premi || {}).length && 'premi'].filter(Boolean).join(' · ') || 'Aggiungi copertina, foto e la vostra storia: è la prima cosa che vede chi apre il link.'}</div>
       <button class="btn block" onclick="formVetrina()">🎨 Personalizza la vetrina</button></div>
     <div class="card"><h2>📣 Bacheca<span class="sp"></span><button class="btn sm sec" onclick="formAnnuncio()">+ Annuncio</button></h2>
